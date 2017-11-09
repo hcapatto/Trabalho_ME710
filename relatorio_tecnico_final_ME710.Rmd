@@ -1,0 +1,639 @@
+---
+title: ""
+geometry: a4paper,textwidth=14cm,textheight=19cm
+lang: pt-br
+header-includes:
+- \usepackage{setspace}
+- \usepackage{indentfirst}
+- \usepackage[utf8]{inputenc}
+- \usepackage{mathptmx}
+- \usepackage{enumerate}
+- \usepackage{url} 
+- \usepackage{lipsum}
+- \usepackage{multicol}
+- \usepackage{booktabs}
+- \usepackage{float} 
+output:
+  pdf_document:
+    df_print: kable
+    highlight: tango
+    number_sections: true
+  html_document: default
+  fig_caption: yes
+  mainfont: Times New Roman
+linestretch: 2
+fontsize: 12bp
+---
+
+\begin{titlepage}
+\begin{center}
+\thispagestyle{empty}
+\begin{figure}[!htb]
+\begin{center}
+\begin{minipage}[b]{0.5\linewidth}
+\begin{center}
+\end{center}
+\end{minipage}
+\begin{minipage}[b]{0.7\linewidth}
+\begin{center}
+\vspace*{1cm}
+ {\large \bf ME710\\[20pt]}
+\end{center}
+\end{minipage}
+\end{center}
+\end{figure}
+\vspace*{\stretch{1}}
+\begin{center}
+\vspace*{2.5cm}
+{\huge \bf Alocação de portfólio em presença de outliers\\[10pt]
+Relatório Final - Técnico\\[2pt]}
+\end{center}
+\vspace*{\stretch{1}}
+\begin{center}
+\vspace*{2cm}
+{\Large \bf 
+Henrique Capatto  RA:146406\break
+}\\[3pt]
+{\large \bf Orientador: Mauricio Enrique Zevallos Herencia}\\[5pt]
+\end{center}
+\vspace*{\stretch{1}}
+\centerline{\bf Campinas, 24 de Novembro de 2017}
+\vspace*{\stretch{1}}
+\end{center}
+\end{titlepage}
+
+\newpage
+
+```{r echo=FALSE}
+#mudando o separador decimal para resultados "printados"
+options(OutDec= ",")
+```
+
+```{r, echo=FALSE}
+#definindo opções padrões dos chunks
+knitr::opts_chunk$set(fig.align='center', echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+
+```{r pacotes,cache = FALSE,echo=FALSE, warning = FALSE,eval=TRUE,message = FALSE, error = FALSE}
+#eval= FALSE faz com que o R ignore este chunk
+#echo = FALSE não permite que o chunk apareça no pdf
+
+#pacotes = c("tidyverse","reshape2","knitr","captioner","gdata","gridExtra","Matrix","plotrix","xtable")
+#install.packages(pacotes)
+
+packages= c("tidyverse","data.table","reshape2","captioner","gridExtra","xtable","ggpubr","MASS", "ggfortify","RiskPortfolios","stocks","PerformanceAnalytics","pastecs","psych","xtable","quadprog","knitr","scales", "kableExtra","PortfolioAnalytics","ROI","ROI.plugin.quadprog","tseries")
+
+#mostra quais pacotes foram carregados
+invisible(lapply(packages, require, character.only = TRUE))
+
+figs <- captioner(prefix="Figura")
+tbls <- captioner(prefix="Tabela")
+
+#instalacao de um pacote pra "printar" tabelas mais bonitinhas
+#install.packages('printr',type = 'source',repos = c('http://yihui.name/xran', 'http://cran.rstudio.com'))
+
+```
+
+
+```{r legendas, echo=FALSE, cache=TRUE,warning=FALSE,message=FALSE}
+#legenda para as tabelas
+
+# legenda para a primeira tabela(estats descr) do primeiro exercício
+legenda_table1 = tbls(name="table_estat_descr1",caption = "Tabelas com os pesos ajustados do portfólio otimizado onde na primeira tabela estão os resultantes do ajuste com a matriz de covariância amostral e na segunda, com a matriz de covariância encolhida")
+legenda_table2 = tbls(name="table_aic_bic",caption = "Comparação dos modelos")
+legenda_table3 = tbls(name="table_esti_testedenulidade",caption = "Estimativas dos parâmetros, intervalo de confiança e teste de nulidade")
+#legendas para os gráficos
+
+#legenda para o primeiro Boxplot
+legenda_graf1 = figs(name="graf1_series",caption = "Retorno diário para as ação APPL")
+
+legenda_graf2 = figs(name="graf2_fe",caption = "Fronteira Eficiente para os portfólis estimados: à esquerda, temos o otimizados usando a matriz de covariâncias amosrtal e à esquerda, temos o otimizados usando a matriz de covariâncias amosrtal")
+
+legenda_graf3 = figs(name="graf3_dispersao",caption = "Retorno diário para as ações: HZO,IART,IBKC,INGR e MPWR")
+
+legenda_graf4 = figs(name="graf4_analiseresidual",caption = "Retorno diário para as ações:INO,INSM,INSY,SEAC e MCHP")
+
+legenda_graf5 = figs(name="graf5_envelope",caption = "Retorno diário para as ações:MCHX,NTRS,NUAN,SCSS e TBBK")
+
+legenda_graf6 = figs(name="graf6_analiseresidual",caption = "Retorno diário para as ações:TCBK,UTHR,YRCW,YUM e ZIXI")
+
+legenda_graf7 = figs(name="graf7_fronteira",caption = "Fronteira Eficiente")
+
+legenda_graf8 = figs(name="graf8_analiseresidual",caption = "Matriz de correlação. Quando maior e menos transparente for c circulo, maior é a correção em módulo")
+legenda_graf9 = figs(name="graf9_envelope",caption = "Gráfico de envelope para o resíduos studentizado para o modelo 3")
+legenda_graf10 = figs(name="graf10_analiseresidual",caption = "Análise residual para o modelo 4")
+legenda_graf11 = figs(name="graf11_envelope",caption = "Gráfico de envelope para o resíduos studentizado para o modelo 4")
+legenda_graf12 = figs(name="graf12_Ajuste",caption = "Gráfico de pontos com a reta ajustada pelo modelo 1")
+
+
+```
+
+```{r funcao}
+#### Efficient Frontier function ####
+eff.frontier <- function (returns, lw="no",short="no", max.allocation=NULL,
+                          risk.premium.up=.5, risk.increment=.005){
+  # return argument should be a m x n matrix with one column per security
+  # short argument is whether short-selling is allowed; default is no (short
+  # selling prohibited)max.allocation is the maximum % allowed for any one
+  # security (reduces concentration) risk.premium.up is the upper limit of the
+  # risk premium modeled (see for loop below) and risk.increment is the
+  # increment (by) value used in the for loop
+  
+  if(lw=="no"){
+  covariance <- cov(returns)
+  }
+  else
+  {
+  covariance <- covEstimation(as.matrix(returns), control = list(type = 'lw'))  
+  }
+  #print(covariance)
+  n <- ncol(covariance)
+  
+  # Create initial Amat and bvec assuming only equality constraint
+  # (short-selling is allowed, no allocation constraints)
+  Amat <- matrix (1, nrow=n)
+  bvec <- 1
+  meq <- 1
+  
+  # Then modify the Amat and bvec if short-selling is prohibited
+  if(short=="no"){
+    Amat <- cbind(1, diag(n))
+    bvec <- c(bvec, rep(0, n))
+  }
+  
+  # And modify Amat and bvec if a max allocation (concentration) is specified
+  if(!is.null(max.allocation)){
+    if(max.allocation > 1 | max.allocation <0){
+      stop("max.allocation must be greater than 0 and less than 1")
+    }
+    if(max.allocation * n < 1){
+      stop("Need to set max.allocation higher; not enough assets to add to 1")
+    }
+    Amat <- cbind(Amat, -diag(n))
+    bvec <- c(bvec, rep(-max.allocation, n))
+  }
+  
+  # Calculate the number of loops
+  loops <- risk.premium.up / risk.increment + 1
+  loop <- 1
+  
+  # Initialize a matrix to contain allocation and statistics
+  # This is not necessary, but speeds up processing and uses less memory
+  eff <- matrix(nrow=loops, ncol=n+3)
+  # Now I need to give the matrix column names
+  colnames(eff) <- c(colnames(returns), "Std.Dev", "Exp.Return", "sharpe")
+  
+  # Loop through the quadratic program solver
+  for (i in seq(from=0, to=risk.premium.up, by=risk.increment)){
+    dvec <- colMeans(returns) * i # This moves the solution along the EF
+    sol <- solve.QP(covariance, dvec=dvec, Amat=Amat, bvec=bvec, meq=meq)
+    eff[loop,"Std.Dev"] <- sqrt(sum(sol$solution*colSums((covariance*sol$solution))))
+    eff[loop,"Exp.Return"] <- as.numeric(sol$solution %*% colMeans(returns))
+    eff[loop,"sharpe"] <- eff[loop,"Exp.Return"] / eff[loop,"Std.Dev"]
+    eff[loop,1:n] <- sol$solution
+    loop <- loop+1
+  }
+  
+  return(as.data.frame(eff))
+}
+
+
+func_media=function(x,num1,num2){
+  if(x[num1,num2] > 0){
+    x = paste("O retorno médio foi de ",x[num1,num2],"ou seja, obteve-se em média retornos diários positivos, indicando um ganho quando se investe nessa ação.")} else if(x[num1,num2] < 0){
+      x = paste("O retorno médio foi de:",x[num1,num2],"ou seja, obteve-se em média retornos diários negativos, indicando perda quando se investe nessa ação.")}
+  return(x)
+  }
+  
+func_curtose=function(x,num1,num2){
+  if(x[num1,num2] > 0){
+    x = paste("A curtose foi de:",x[num1,num2],2,"ou seja, a distribuição possui a curva da função de distribuição mais afunilada com um pico mais alto do que a distribuição normal.")} else if(x[num1,num2] < 0){
+      x = paste("A curtose foi de:",x[num1,num2],"ou seja, então a funçao de distribuição é mais achatada do que a distribuição normal.")} else {
+        x = paste("A curtose foi de:",x[num1,num2],"ou seja, a função de distribuição tem o mesmo achatamento da distribuição normal,.")
+      }
+return(x)
+  }
+
+func_ass=function(x,num1,num2){
+  if(x[num1,num2] > 0){
+    x = paste("A assimetria foi de:",(x[num1,num2]),"ou seja, indica que a cauda do lado direito é maior que a do lado esquerdo.")} else if(x[num1,num2] < 0){
+      x = paste("A assimetria foi de:",percent(x[num1,num2]),"ou seja, indica que a cauda do lado esquerdo da função densidade de probabilidade é maior que a do lado direito.")} else{ 
+        x = paste("A assimetria foi de:",percent(x[num1,num2]),"ou seja, indica que os valores são distribuídos de maneira relativamente iguais em ambos os lados da média, mas não implica necessariamente, uma distribuição simétrica.")
+      }
+return(x)
+  }
+
+func_corr= function(x,num1){
+  return(paste("A maior correlação positiva dessa ação ocorreu com o ativo",names(which.max(corr[num1,-num1])), "e seu respectivo valor é", round(corr[1,as.numeric(which.max(corr[num1,-num1]))+1],2),"indicando que quanto maior for o valor desse ativo maior será o valor da ação correlacionada. A maior correlação negativa ocorreu com o ativo  ",names(which.min(corr[num1,])), "e seu respectivo valor é", round(corr[1,as.numeric(which.min(corr[num1,]))],2),"indicando que quanto menor for o valor desse ativo maior será o valor da ação correlacionada negativamente."))}
+
+
+lw.sigma <- function(R, ...){
+  out <- list()
+  # estimate covariance matrix via robust covariance matrix estimate, 
+  # ledoit-wolf shrinkage, GARCH, factor model, etc.
+  # set.seed(1234)
+  # out$sigma <- MASS::cov.rob(R, method="mcd", ...)$cov
+  out$sigma <- covEstimation(as.matrix(retorno[2:length(retorno),]), control = list(type = 'lw'))
+  #print(index(last(R)))
+  return(out)
+}
+
+```
+
+
+
+```{r dados, cache=TRUE, eval=TRUE}
+
+path_arq = glue::glue(getwd(),'/dados_proposta_ra146406.csv')
+
+dados = fread(path_arq, showProgress = FALSE)
+
+corr = cor(dados[,2:31])
+```
+
+
+```{r}
+data2 = as.data.frame(dados)
+
+rownames(data2) = data2[,1]
+data2[,1] <- NULL
+
+#zoo(data2)
+#ys <- TawnyPortfolio(data2)
+#S.hat <- cov_shrink(ys)
+
+retorno = Return.calculate(data2, method = "log")
+retorno2 = retorno
+retorno2$Data = rownames(retorno)
+retorno2 =  retorno2[complete.cases(retorno2),]
+Sigma = ifelse(cov(as.matrix(retorno[2:length(retorno),]))< 0,cov(as.matrix(retorno[2:length(retorno),]))*-1,cov(as.matrix(retorno[2:length(retorno),])))
+S.hat_shrink2 = covEstimation(as.matrix(retorno[2:length(retorno),]), control = list(type = 'lw'))
+
+media_retorno = meanEstimation(as.matrix(retorno[2:length(retorno),]))
+
+ws <- optimalPortfolio(Sigma = Sigma, mu=media_retorno, control = list(type='minvol'))
+
+ws2 <- optimalPortfolio(Sigma = S.hat_shrink2, mu=media_retorno, control = list(type='minvol')) 
+
+ws_per = matrix(percent(ws),6,5)
+ws2_per = matrix(percent(ws2),6,5)
+
+g31 = ggplot(retorno2, aes(x = as.Date(Data), y=AAPL)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Retorno")+theme_bw()
+
+#stocks <- colnames(retorno[2:length(retorno),])
+# Specify an initial portfolio
+#portf.init <- portfolio.spec(stocks)
+
+
+#sample_moments <- set.portfolio.moments(retorno[2:length(retorno),],portfolio = portf.init)
+
+
+# Add constraints
+# weights sum to 1
+#portf.minvar <- add.constraint(portf.init, type="full_investment")
+# box constraints
+#portf.minvar <- add.constraint(portf.minvar, type="box", min=0.01, max=0.45)
+
+# Add objective
+# objective to minimize portfolio variance
+#portf.minvar <- add.objective(portf.minvar, type="risk", name="var")
+
+
+
+# Specify an initial portfolio
+#portf.init <- portfolio.spec(colnames(retorno[2:length(retorno),]))
+# Add constraints
+# weights sum to 1
+#portf.minvar <- add.constraint(portf.init, type="full_investment")
+# box constraints
+#portf.minvar <- add.constraint(portf.minvar, type="box", min=0.01, max=0.45)
+
+# Add objective
+# objective to minimize portfolio variance
+#portf.minvar <- add.objective(portf.minvar, type="risk", name="var")
+
+# Backtesting parameters
+# Set rebalancing frequency
+#rebal.freq <- "quarters"
+# Training Period
+#training <- 400
+# Trailing Period
+#trailing <- 250
+
+
+ 
+# Create the portfolio specification
+#port_spec <- portfolio.spec(colnames(retorno[2:length(retorno),]))
+
+# Add a full investment constraint such that the weights sum to 1
+#port_spec <- add.constraint(portfolio = port_spec, type = "full_investment")
+
+# Add a long only constraint such that the weight of an asset is between 0 and 1
+#port_spec <- add.constraint(portfolio = port_spec, type = "long_only")
+
+# Add an objective to minimize portfolio standard deviation
+#port_spec <- add.objective(portfolio = port_spec, type = "risk", name = "StdDev")
+
+# Solve the optimization problem
+#opt <- optimize.portfolio(index_returns, portfolio = port_spec, optimize_method= "ROI")
+
+
+## Visualize results
+
+# Now that we have run the optimization, we would like to take a look 
+# at the output and results. Recall that the optimization output is 
+# in a variable named opt. In our case, for the portfolio optimization 
+# in the previous exercise, we are interested in the optimal weights 
+# and estimated objective value. The weights are considered optimal in
+# the sense that the set of weights minimizes the objective value, 
+# portfolio standard deviation, and satisfies the full investment and 
+# long only constraints based on historical data.
+
+# Note that you won't recognize some of these functions right now. 
+# Don't worry! They will all be introduced throughout the course.
+
+# Print the results of the optimization
+#print(opt)
+
+# Extract the optimal weights
+#extractWeights(opt)
+
+# Chart the optimal weights
+#chart.Weights(opt)
+
+
+
+
+#Return.portfolio(retorno[2:length(retorno),],weights=as.vector(ws2))
+                 
+#retorno_anulizados = table.AnnualizedReturns(as.matrix(retorno[2:length(retorno),]))
+
+#ia$cov = tawny::cov.shrink(ia$hist.returns) 
+#ef.risk.cov.shrink = portopt(ia, constraints, 50, 'Risk Ledoit-Wolf', equally.spaced.risk = T)
+         
+#ia = ia.original
+     
+# Plot multiple Efficient Frontiers and Transition Maps
+#layout( matrix(c(1,1,2,3), nrow = 2, byrow=T) )
+#plot.ef(ia, list(ef.risk, ef.risk.cov.shrink), portfolio.risk, F)
+
+```
+
+```{r}
+#estatisticas descritivas
+stats_descr_retorno = as.data.frame(describe(retorno2[,1:30]))
+stats_descr_retorno = stats_descr_retorno[-c(1,2,5,6,7,12)]
+names(stats_descr_retorno)=c("Média","SD","Min", "Máx","Assimetria","Curtose","SE")
+stats_descr_retorno$Média=percent(stats_descr_retorno$Média)
+stats_descr_retorno$SD=percent(stats_descr_retorno$SD)
+stats_descr_retorno$SE=percent(stats_descr_retorno$SE)
+stats_descr_retorno$Min=round(stats_descr_retorno$Min,3)
+stats_descr_retorno$Máx=round(stats_descr_retorno$Máx,3)
+stats_descr_retorno$Assimetria=round(stats_descr_retorno$Assimetria,3)
+stats_descr_retorno$Curtose=round(stats_descr_retorno$Curtose,3)
+```
+
+```{r}
+eff1 <- eff.frontier(returns=retorno[-1,], lw="yes",short="yes",max.allocation=.5,risk.premium.up=1,risk.increment=.005)
+# Find the optimal portfolio
+eff.optimal.point <- eff1[eff1$sharpe==max(eff1$sharpe),]
+
+# graph efficient frontier
+# Start with color scheme
+ealred <- "#7D110C"
+ealtan <- "#CDC4B6"
+eallighttan <- "#F7F6F0"
+ealdark <- "#423C30"
+
+g61 = ggplot(eff1, aes(x=Std.Dev, y=Exp.Return)) + geom_point(alpha=.1, color=ealdark) + geom_point(data=eff.optimal.point, aes(x=Std.Dev, y=Exp.Return, label=sharpe),color=ealred, size=5)+annotate(geom="text", x=eff.optimal.point$Std.Dev,y=eff.optimal.point$Exp.Return,label=paste("Risco: ",round(eff.optimal.point$Std.Dev*100, digits=3),"\nRetorno: ",round(eff.optimal.point$Exp.Return*100, digits=4),"%\nSharpe: ",round(eff.optimal.point$sharpe*100, digits=2), "%", sep=""),hjust=0, vjust=1.2) +ggtitle("Fronteira Eficiente") +labs(x="Risco (desvio padrão do portfólio)", y="Retorno") +theme(panel.background=element_rect(fill=eallighttan),text=element_text(color=ealdark),plot.title=element_text(size=24, color=ealred))+theme_bw()
+
+eff <- eff.frontier(returns=retorno[-1,], lw="no",short="yes", max.allocation=.5,risk.premium.up=1,risk.increment=.005)
+# Find the optimal portfolio
+eff.optimal.point <- eff[eff$sharpe==max(eff$sharpe),]
+
+# graph efficient frontier
+# Start with color scheme
+ealred <- "#7D110C"
+ealtan <- "#CDC4B6"
+eallighttan <- "#F7F6F0"
+ealdark <- "#423C30"
+
+g62 = ggplot(eff, aes(x=Std.Dev, y=Exp.Return)) + geom_point(alpha=.1, color=ealdark) +
+  geom_point(data=eff.optimal.point, aes(x=Std.Dev, y=Exp.Return, label=sharpe),
+             color=ealred, size=5) +
+  annotate(geom="text", x=eff.optimal.point$Std.Dev,
+           y=eff.optimal.point$Exp.Return,
+           label=paste("Risco: ",
+                       round(eff.optimal.point$Std.Dev*100, digits=3),"\nRetorno: ",
+                       round(eff.optimal.point$Exp.Return*100, digits=4),"%\nSharpe: ",
+                       round(eff.optimal.point$sharpe*100, digits=2), "%", sep=""),
+           hjust=0, vjust=1.2) +
+  ggtitle("Fronteira Eficiente") +
+  labs(x="Risco (desvio padrão do portfólio)", y="Retorno") +
+  theme(panel.background=element_rect(fill=eallighttan),
+        text=element_text(color=ealdark),
+        plot.title=element_text(size=24, color=ealred))+theme_bw()
+
+
+```
+
+
+# Introdução
+
+As consequências da crises econômicas têm sido alarmantes durantes os dois ultimos séculos, influenciando a vida de milhões de pessoas, gerando 
+desemprego, fome, depressão e até guerra. Estima-se que na grande depressão (crise econômica de 1929) o nível de desemprego nos Estados Unidos da América ficou em torno de 25% da população e em outros lugares, chegou a 33% [7]. No Brasil ocorreu a queima de sacas de café, principal produto de exportação do país na época, devido a baixa nos preços deste produto no mercado internacional.
+
+Dada esta contextualização histórica, percebe-se que muitas situações são imprevisíveis e que, para um investidor, este problema pode acarretar em uma perda monetária e, em casos extremos, até a falência. Logo, um método de investimento que leva em consideração esses riscos pode ser interessante como forma para proteção contra as vulnerabilidades que o mercado de ações oferece.
+
+Neste relatório terá as seguntes partes: Objetivo, Metodologia, Resultados, Conclusão, Apêndice, onde se encontram as tabelas e gráficos referidos no texto, e Referências Bibliográficas.
+
+# Objetivo
+
+O objetivo deste relatório final é ajustar os pesos, serão definidos posteriormente, que compoem um portfólio de ações e analisar quais ações trazem maiores lucros, no resto do relatório será definida e utilizada a terminologia retorno. Além disso, vamos analisar duas maneiras diferentes de se estimar a matriz de covariâncias, uma utilizando a matriz amostral e outra utilizando uma metodologia proposta por Ledoit e Wolf (2003) [ref]. Vamos otimizar dois portfólios com as dois métodos citados anteriormente para estimação da matriz de covariância, valendo-se do índice de Sharpe para indicar qual o melhor o portfólio e verificar qual delas traz um retorno maior sobre o risco tomado. 
+
+Junto a isto vamos testar alguns modelos de séries temporais a fim de comparação entre eles.
+
+# Metodologia
+
+Desde o trabalho seminal de Markowitz (1952), a Teoria Moderna de Portfólio tem sido a maneira mais utilizada de se escolher ações para investimento. Os dois preceitos fundamentais são: o retorno esperado para cada ação, que representa ao gerente de portfólio capacidade de previsão de futuros movimentos de preços e a matriz de covariância do retorno de ações,configurando o controle de risco.
+
+O modelo proposto pelo autor proporciona ao investidor uma alocação otimizada de recursos entre ações visando um equilíbrio entre risco e retorno. Essa construção teórica formaliza o princípio de que as únicas variáveis de decisão para a seleção de um ativo são o valor esperado e a variância das taxas de retorno no espaço de tempo considerado[4].
+
+Um problema que ocorre é quando há uma observação discrepante no histórico de retorno, como Pode ser observado na Figura XX e assim a  matriz de covariância amostral é estimada com  erros, decorrendo que estes  são superestimados, implicando em um mal ajuste na otimização da distribuição dos pesos de cada ação dentro do portfólio, gerando resultados desinteressantes ao acionista.
+
+Para contornar o problema acima foi proposto um método, por Ledoit e Wolf(2004), para estimação da matriz de covariância do retornos que pode substituir a matriz de covariância amostral em qualquer aplicação do modelo de média-variância de Markovitz. Esse método é referido como "encolhimento" dos extremos para o centro.[2]
+
+
+##  Modelo 
+
+O preço do i-ésimo investimento no tempo t é descrito como $P_{i,j}$ e o log-retorno do investimento i, no tempo t é definido como: $r_{i,t} = log(P_{i,t})-log(P_{i,t-1})$
+
+Para trabalhos envolvendo séries financeiras, é preferível a utilização da variável retorno ao invés do preço pois os retornos possuem características mais interessantes, como a estacionaridade e a presença de agrupamentos de volatilidade ao longo do tempo. Uma das principais características da volatilidade é o comportamento
+heterocedástico. 
+
+A série de retornos pode ser escritas como:
+
+$r_t = \mu_t + \sqrt{h_t} \epsilon_t$ , com $\epsilon_t  \stackrel{i.i.d}{\sim} N(0,1)$, e a volatilidade é
+definida como: $h_t = E_{t-1} ((r_t - \mu_t )^2 )$ ,onde $\mu_t = E(r_t |F_{t-1} ) = E_{t-1} (r_t )$ é o valor esperado condicionado a informação até o tempo $t-1$.
+
+## Construção de portfólios
+
+Segundo o modelo proposto por Markovitz(1952) proporciona ao investidor uma alocação otimilizada de recursos entre ações visando um equilibrio entre risco e retorno. Essa construção teórica formaliza a princípio que as únicas variáveis de decisão para a seleção de um ativo são o valor esperado e a variância das taxas de retorno no espaço de tempo considerado[4].
+
+Seja uma carteira de investimentos $P$ composta de $n$ ativos e os retornos relativos a ela sejam respectivamente $r_1,r_2,\dots,r_n$ e os retornos esperados $R_1,R_2,\dots,R_n$ e a matriz covariância $\Sigma$. É investido uma proporção $\omega_i$ na ação com retorno $R_i$, onde cada $\omega_i$ é chamado de peso ótimo tal que: $P=\sum_{i=1}^{n}\omega_i R_i$ , $\sum_{i=1}^{n}\omega_i = 1$.
+
+Seja $\omega^{'} = (\omega_1,\omega_2,\dots, \omega_n)$, $R^{'} = (R_1,R_2,\dots, R_n)$, $r^{'} = (r_1,r_2,\dots, r_n)$ e $\Sigma = Cov(R)$. A média e variância do retorno P, denotadas respectivamente por $\mu$ e $\Sigma$ são dadas por: $\mu = \sum_{i=1}^{n}\omega_ir_i$ e $\sigma^{2}  = \sum_{i=1}^{n}\sum_{j=1}^{n}\omega_iCov(R_i , R_j) = \omega^{'}\Sigma\omega$. 
+
+Há duas otimizações dentre as mais conhecidas para abordagem do problema em questão, as quais são:
+
+1. Maximizar $\mu$ com um limitante superior para $\sigma$: $\sigma^2<q$
+
+2. Minimizar $\sigma^2$ com um valor objetivo para $\mu$
+
+## Método de encolhimento da matriz de covariância
+
+Como a otimização de portfólio depende da estimação da matriz de covariâncias e sabe-se que em casos onde se apresentam outliers, a matriz de covariâncias amostral não é bem estimada. Para exemplicar este caso, vamos utilizar as açoes de APPL, onde vemos no gráfico 1 que há um retorno que se destaca negativamente, nos anos entre 2014 e 2015, seu valor é de `r round(retorno2[which.min(retorno2[,1]),1],2)`. Calculando o desvio padrão com esse observação vemos que este tem um valor de `r round(sd(retorno2[,1]),2)` e este valor sem a observação mais negativa e um possível outlier é de `r round(sd(retorno2[-which.min(retorno2[,1]),1]),2)`. Portanto, sem aquele outlier vemos que há uma redução no cálculo do desvio padrão de `r 1-sd(retorno2[-which.min(retorno2[,1]),1])/sd(retorno2[,1])`%. Logo, uma técnica que consiga se comportar melhor em relação a esses comportamento de outliers
+
+Uma resolução deste problema  consiste na utilização da seguinte fórmula de estimação da matriz de covariância "encolhida", que foi proposta por Ledoit e Wolf(2004) : $\mathbf{\hat\Sigma_{shrink}}  = \delta^{*}\mathbf{F}+(1-\delta^{*})\mathbf{S}$, onde $\delta^{*}$ é uma constante de encolhimento. Esta constante é estimada e para maiores detalhes sobre a obtenção teórica deste estimador pode ser encontrada na referência(2004).
+
+## Índice de Sharpe
+
+Para avaliação do desempenho da otimização do portfólio, utiliza-se o índice de Sharpe, calculado como: $I_{s}=\frac{(R_{i}-R{f})}{\sigma_{i}}$, onde $R_{i}$ é o Retorno do Ativo, $R{f}$ é retorno livre de risco e $\sigma_{i}$ é o Risco do Ativo. Sua interpretação é dada por:para cada 1 ponto de risco que o investidor teve no passado houve um prêmio de $I_{s}$ pontos de rentabilidade acima daquela que ele receberia se tivesse optado por um investimento livre de risco. O retorno livre de risco considerado nas análises será de 0%.
+
+## Fronteira Eficiente
+
+A fronteira eficiente descreve o relacionamento entre o retorno que pode ser esperado de uma carteira e da volatilidade da carteira. Pode ser extraída na forma de uma curva em um gráfico do risco de encontro a retorno previsto de uma carteira. A fronteira eficiente dá o melhor retorno que pode ser esperado para um dado nível de risco ou o mais baixo nível de risco necessário conseguir uma taxa de retorno prevista dada.
+
+
+
+# Resultados
+
+Vamos estimar os pesos ótimos de dois portfólios: um deles, utilizando a matriz de covariância amostral e outro, com a matriz de covariância encolhida. Vamos compará-los atráves do índice de Sharpe e observando a Fronteira Eficiente, analisaremos qual deles traz maior retorno com o menor risco. O tipo de portfólio que ajustamos é o de mínima variância. Vale ressalatar que admitimos pesos negativos no ajuste dos portfólios.
+
+Podemos interpretar o peso de ativo num portfólio como sendo a porcentagem que este detém dentro do conjunto de ações. Vemos na Tabela 1, que as estimativas dos pesos de um portfóio ajustado utilizando a matriz de covariância amostral tem valores espúrios pois algum pesos estão fora do intervalo (0,100%), que é o esperado para um portfófio bem ajustado. O mesmo caso não ocorre com o portfólio ajustado utilizando a matriz de convariâncias encolhida, onde observamos na Tabela 1 que os pesos estão contidos no referido intervalo. Podemos interpretar os pesos como sendo a porcentagem em que cada ação deve compor o portfólio, ou seja, quando positiva, deve-se comprar mais daquele ativo e quando negativo, deve-se negociar a ação.
+
+# Conclusão
+
+
+
+# Apêndice
+
+
+```{r}
+g31
+
+#Podemos obervar na Figura 2 que o índice de Sharpe para o primeiro caso é ligeiramente menor do para o segundo, #com os valores respectivos de 6,37% e 6,36%. Porém o risco estimado utilizando a segunda abordagem forneceu um #menor risco, sendo interessante para investidores que não desejam alto risco tomado.
+
+
+#No Gráfico 2
+```
+`r legenda_graf1`
+
+
+
+```{r, fig.align=3, fig.height=5}
+grid.arrange(g62,g61,ncol=2,nrow=1)
+```
+`r legenda_graf2`
+
+
+
+
+```{r}
+#kable(list(as.data.frame(ws_per),as.data.frame(ws2_per)), format = "latex", booktabs = T)
+
+library(knitr)
+library(xtable)
+
+t1 <- kable(ws_per, format = "latex", booktabs = TRUE)
+t2 <- kable(ws2_per, format = "latex", booktabs = TRUE)
+
+#cat(c("\\begin{table}[!htb]
+#    \\begin{minipage}{.5\\linewidth}
+#      \\caption{}
+#      \\centering",
+#        t1,
+      
+#    "\\end{minipage}%
+#    \\hspace{1cm} \\centering 
+#    \\begin{minipage}{.5\\linewidth}
+#      \\centering
+#        \\caption{}",
+#        t2,
+#    "\\end{minipage} 
+#\\end{table}"
+#))  
+
+```
+
+\begin{table}[!htb]
+    \begin{minipage}{.5\linewidth}
+      \caption{}
+      \centering 
+\begin{tabular}{lllll}
+\toprule
+940\% & 290\% & -770\% & 100\% & -1\%\\
+-390\% & 550\% & -4\% & 1\% & 510\%\\
+40\% & -120\% & 250\% & -560\% & -370\%\\
+-240\% & 2\% & 820\% & -70\% & 840\%\\
+170\% & 220\% & -290\% & -350\% & 240\%\\
+820\% & 800\% & -1\% & -290\% & -160\%\\
+\bottomrule
+\end{tabular} \end{minipage}%
+    \hspace{1cm} \centering 
+    \begin{minipage}{.5\linewidth}
+      \centering
+        \caption{} 
+\begin{tabular}{lllll}
+\toprule
+44.1\% & -29.8\% & 5.8\% & -14.1\% & -14.0\%\\
+-22.2\% & 8.4\% & -1.7\% & 31.2\% & -10.4\%\\
+5.3\% & 20.0\% & -10.6\% & 3.2\% & 11.3\%\\
+1.4\% & 25.5\% & 2.3\% & -55.3\% & 12.1\%\\
+26.1\% & 1.2\% & -11.8\% & -1.6\% & 19.5\%\\
+29.1\% & 34.7\% & -10.0\% & 24.6\% & -24.1\%\\
+\bottomrule
+\end{tabular} \end{minipage} 
+\end{table}
+
+\vspace*{3cm}
+
+`r legenda_table1`
+
+
+\vspace*{3cm}
+
+
+\newpage
+
+# Referências
+
+[1] Markowitz, H.M. (Março 1952). "Portfolio Selection". The Journal of Finance. pags: 77–91
+
+[2] Wolf M,Ledoit O."Honey, I Shrunk the Sample Covariance Matrix". Journal of Portfolio Management, Volume 31, Number 1, Fall 2004
+
+[3] Pedro A. Morettin , Econometria Financeira – Um curso em séries
+temporais financeiras. Editora Blucher 2008.
+
+[4] Oswaldo Luiz do Valle Costa e Hugo Gonçalves Viera de Assunção
+, Análise de Risco e Retorno em Investimentos Financeiros. Editora
+manole 2005.
+
+[5] https://cran.r-project.org/index.html
+
+[6] https://www.rstudio.com/products/rstudio/download/
+
+[7] Frank, Robert H.; Bernanke, Ben S. (2007). Principles of Macroeconomics (3rd ed.). Boston: McGraw-Hill/Irwin
+
+
+
+\vspace*{6cm}
+
+\noindent\begin{tabular}{ll}
+\makebox[2.5in]{\hrulefill} & \makebox[2.5in]{\hrulefill}\\
+Henrique Capatto & Data\\[8ex]% adds space between the two sets of signatures
+\makebox[2.5in]{\hrulefill} & \makebox[2.5in]{\hrulefill}\\
+Mauricio Enrique Zevallos Herencia & Data\\
+\end{tabular}
+

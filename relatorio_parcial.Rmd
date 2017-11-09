@@ -1,0 +1,643 @@
+---
+title: ""
+geometry: a4paper,textwidth=14cm,textheight=19cm
+lang: pt-br
+header-includes:
+- \usepackage{setspace}
+- \usepackage{indentfirst}
+- \usepackage[utf8]{inputenc}
+- \usepackage{mathptmx}
+- \usepackage{enumerate}
+- \usepackage{url} 
+- \usepackage{lipsum}
+- \usepackage{multicol}
+- \usepackage{booktabs}
+- \usepackage{float} 
+output:
+  pdf_document:
+    df_print: kable
+    highlight: tango
+    number_sections: true
+  html_document: default
+  fig_caption: yes
+  mainfont: Times New Roman
+linestretch: 2
+fontsize: 12bp
+---
+
+\begin{titlepage}
+\begin{center}
+\thispagestyle{empty}
+\begin{figure}[!htb]
+\begin{center}
+\begin{minipage}[b]{0.5\linewidth}
+\begin{center}
+\end{center}
+\end{minipage}
+\begin{minipage}[b]{0.7\linewidth}
+\begin{center}
+\vspace*{1cm}
+ {\large \bf ME710\\[20pt]}
+\end{center}
+\end{minipage}
+\end{center}
+\end{figure}
+\vspace*{\stretch{1}}
+\begin{center}
+\vspace*{2.5cm}
+{\huge \bf Alocação de portfólio em presença de outliers\\[10pt]
+Relatório Parcial\\[2pt]}
+\end{center}
+\vspace*{\stretch{1}}
+\begin{center}
+\vspace*{2cm}
+{\Large \bf 
+Henrique Capatto  RA:146406\break
+}\\[3pt]
+{\large \bf Orientador: Mauricio Enrique Zevallos Herencia}\\[5pt]
+\end{center}
+\vspace*{\stretch{1}}
+\centerline{\bf Campinas, 6 de Outubro de 2017}
+\vspace*{\stretch{1}}
+\end{center}
+\end{titlepage}
+
+\newpage
+
+```{r echo=FALSE}
+#mudando o separador decimal para resultados "printados"
+options(OutDec= ",")
+```
+
+```{r, echo=FALSE}
+#definindo opções padrões dos chunks
+knitr::opts_chunk$set(fig.align='center', echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+
+```{r pacotes,cache = FALSE,echo=FALSE, warning = FALSE,eval=TRUE,message = FALSE, error = FALSE}
+#eval= FALSE faz com que o R ignore este chunk
+#echo = FALSE não permite que o chunk apareça no pdf
+
+#pacotes = c("tidyverse","reshape2","knitr","captioner","gdata","gridExtra","Matrix","plotrix","xtable")
+
+packages= c("tidyverse","data.table","reshape2","captioner","gridExtra","xtable","ggpubr","MASS", "ggfortify","ICtest","pastecs","psych","xtable","quadprog","PerformanceAnalytics","corrplot","scales","knitr", "kableExtra")
+
+
+#install.packages(packages)
+
+#mostra quais pacotes foram carregados
+invisible(lapply(packages, require, character.only = TRUE))
+
+figs <- captioner(prefix="Figura")
+tbls <- captioner(prefix="Tabela")
+
+#instalacao de um pacote pra "printar" tabelas mais bonitinhas
+#install.packages('printr',type = 'source',repos = c('http://yihui.name/xran', 'http://cran.rstudio.com'))
+
+```
+
+
+```{r legendas, echo=FALSE, cache=TRUE,warning=FALSE,message=FALSE}
+#legenda para as tabelas
+
+# legenda para a primeira tabela(estats descr) do primeiro exercício
+legenda_table1 = tbls(name="table_estat_descr1",caption = "Estatísticas Descritivas para o Retorno diário. A coluna P Valor é referente ao valor p do Teste de Shapiro Wilk aplicado ao retorno de cada ação. SD: Desvio Padrão. SE: Erro Padrão. Para análise dos retornos, separamos os dados em dois grupos por meio de análise gráfica. Grupo 1: pela análise, não mostraram afetados pela crise de 2008-2009, ou seja, o retorno mais positivo ou mais negativo que se destaca em relação ao restante das observações não está compreendido no período de tempo de 2008-2009. Grupo 2: compreende os retornos que foram influenciados pela crise, no qual o retorno mais positivo ou mais negativo esteve compreendido no período entre 2008-2009.")
+
+legenda_table2 = tbls(name="table_aic_bic",caption = "Comparação dos modelos")
+legenda_table3 = tbls(name="table_esti_testedenulidade",caption = "Estimativas dos parâmetros, intervalo de confiança e teste de nulidade")
+#legendas para os gráficos
+
+#legenda para o primeiro Boxplot
+legenda_graf1 = figs(name="graf1_series",caption = "Retorno diário para as ações:AAPL,BOOM, IART, INSY, YRCW")
+
+legenda_graf2 = figs(name="graf2_series",caption = "Retorno diário para as ações:BREW,NTRS,NUAN,SCSS e TBBK")
+
+legenda_graf3 = figs(name="graf3_dispersao",caption = "Retorno diário para as ações: HZO,IART,IBKC,INGR e MPWR")
+
+legenda_graf4 = figs(name="graf4_corre",caption = "Gráfico para estudo da correlação entre retornos. Quanto maior for o tamanho do círculo, maior será o vlor da correlação em módulo")
+
+legenda_graf5 = figs(name="graf5_envelope",caption = "Retorno diário para as ações:MCHX,NTRS,NUAN,SCSS e TBBK")
+
+legenda_graf6 = figs(name="graf6_analiseresidual",caption = "Retorno diário para as ações:TCBK,UTHR,YRCW,YUM e ZIXI")
+
+legenda_graf7 = figs(name="graf7_fronteira",caption = "Fronteira Eficiente")
+
+legenda_graf8 = figs(name="graf8_analiseresidual",caption = "Matriz de correlação. Quando maior e menos transparente for c circulo, maior é a correção em módulo")
+legenda_graf9 = figs(name="graf9_envelope",caption = "Gráfico de envelope para o resíduos studentizado para o modelo 3")
+legenda_graf10 = figs(name="graf10_analiseresidual",caption = "Análise residual para o modelo 4")
+legenda_graf11 = figs(name="graf11_envelope",caption = "Gráfico de envelope para o resíduos studentizado para o modelo 4")
+legenda_graf12 = figs(name="graf12_Ajuste",caption = "Gráfico de pontos com a reta ajustada pelo modelo 1")
+
+
+```
+
+```{r funcao}
+#### Efficient Frontier function ####
+eff.frontier <- function (returns, lw="no",short="no", max.allocation=NULL,
+                          risk.premium.up=.5, risk.increment=.005){
+  # return argument should be a m x n matrix with one column per security
+  # short argument is whether short-selling is allowed; default is no (short
+  # selling prohibited)max.allocation is the maximum % allowed for any one
+  # security (reduces concentration) risk.premium.up is the upper limit of the
+  # risk premium modeled (see for loop below) and risk.increment is the
+  # increment (by) value used in the for loop
+  
+  if(lw=="no"){
+  covariance <- cov(returns)
+  }
+  else
+  {
+  covariance <- covEstimation(as.matrix(returns), control = list(type = 'lw'))  
+  }
+  #print(covariance)
+  n <- ncol(covariance)
+  
+  # Create initial Amat and bvec assuming only equality constraint
+  # (short-selling is allowed, no allocation constraints)
+  Amat <- matrix (1, nrow=n)
+  bvec <- 1
+  meq <- 1
+  
+  # Then modify the Amat and bvec if short-selling is prohibited
+  if(short=="no"){
+    Amat <- cbind(1, diag(n))
+    bvec <- c(bvec, rep(0, n))
+  }
+  
+  # And modify Amat and bvec if a max allocation (concentration) is specified
+  if(!is.null(max.allocation)){
+    if(max.allocation > 1 | max.allocation <0){
+      stop("max.allocation must be greater than 0 and less than 1")
+    }
+    if(max.allocation * n < 1){
+      stop("Need to set max.allocation higher; not enough assets to add to 1")
+    }
+    Amat <- cbind(Amat, -diag(n))
+    bvec <- c(bvec, rep(-max.allocation, n))
+  }
+  
+  # Calculate the number of loops
+  loops <- risk.premium.up / risk.increment + 1
+  loop <- 1
+  
+  # Initialize a matrix to contain allocation and statistics
+  # This is not necessary, but speeds up processing and uses less memory
+  eff <- matrix(nrow=loops, ncol=n+3)
+  # Now I need to give the matrix column names
+  colnames(eff) <- c(colnames(returns), "Std.Dev", "Exp.Return", "sharpe")
+  
+  # Loop through the quadratic program solver
+  for (i in seq(from=0, to=risk.premium.up, by=risk.increment)){
+    dvec <- colMeans(returns) * i # This moves the solution along the EF
+    sol <- solve.QP(covariance, dvec=dvec, Amat=Amat, bvec=bvec, meq=meq)
+    eff[loop,"Std.Dev"] <- sqrt(sum(sol$solution*colSums((covariance*sol$solution))))
+    eff[loop,"Exp.Return"] <- as.numeric(sol$solution %*% colMeans(returns))
+    eff[loop,"sharpe"] <- eff[loop,"Exp.Return"] / eff[loop,"Std.Dev"]
+    eff[loop,1:n] <- sol$solution
+    loop <- loop+1
+  }
+  
+  return(as.data.frame(eff))
+}
+
+
+func_media=function(x,num1,num2){
+  if(x[num1,num2] > 0){
+    x = paste("O retorno médio foi de ",x[num1,num2],"ou seja, obteve-se em média retornos diários positivos, indicando um ganho quando se investe nessa ação.")} else if(x[num1,num2] < 0){
+      x = paste("O retorno médio foi de:",x[num1,num2],"ou seja, obteve-se em média retornos diários negativos, indicando perda quando se investe nessa ação.")}
+  return(x)
+  }
+  
+func_curtose=function(x,num1,num2){
+  if(x[num1,num2] > 0){
+    x = paste("A curtose foi de:",x[num1,num2],2,"ou seja, a distribuição possui a curva da função de distribuição mais afunilada com um pico mais alto do que a distribuição normal.")} else if(x[num1,num2] < 0){
+      x = paste("A curtose foi de:",x[num1,num2],"ou seja, então a funçao de distribuição é mais achatada do que a distribuição normal.")} else {
+        x = paste("A curtose foi de:",x[num1,num2],"ou seja, a função de distribuição tem o mesmo achatamento da distribuição normal,.")
+      }
+return(x)
+  }
+
+func_ass=function(x,num1,num2){
+  if(x[num1,num2] > 0){
+    x = paste("A assimetria foi de:",(x[num1,num2]),"ou seja, indica que a cauda do lado direito é maior que a do lado esquerdo.")} else if(x[num1,num2] < 0){
+      x = paste("A assimetria foi de:",percent(x[num1,num2]),"ou seja, indica que a cauda do lado esquerdo da função densidade de probabilidade é maior que a do lado direito.")} else{ 
+        x = paste("A assimetria foi de:",percent(x[num1,num2]),"ou seja, indica que os valores são distribuídos de maneira relativamente iguais em ambos os lados da média, mas não implica necessariamente, uma distribuição simétrica.")
+      }
+return(x)
+  }
+
+func_corr= function(x,num1){
+  return(paste("A maior correlação positiva dessa ação ocorreu com o ativo",names(which.max(corr[num1,-num1])), "e seu respectivo valor é", round(corr[1,as.numeric(which.max(corr[num1,-num1]))+1],2),"indicando que quanto maior for o valor desse ativo maior será o valor da ação correlacionada. A maior correlação negativa ocorreu com o ativo  ",names(which.min(corr[num1,])), "e seu respectivo valor é", round(corr[1,as.numeric(which.min(corr[num1,]))],2),"indicando que quanto menor for o valor desse ativo maior será o valor da ação correlacionada negativamente."))}
+
+
+```
+
+
+
+```{r dados, cache=TRUE, eval=TRUE}
+
+#path_arq = glue::glue(getwd(),'wiki_prices_redux.csv')
+
+dados = fread("/Users/ra146406/Documents/Trabalho_ME710/dados_proposta_ra146406.csv", showProgress = FALSE)
+
+corr = cor(dados[,2:31])
+```
+
+```{r graf_1, cache=TRUE, eval=FALSE}
+g1 = ggplot(dados, aes(x = as.Date(Data), y=AAPL)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Retorno")+theme_bw()
+
+g2 = ggplot(dados, aes(x = as.Date(Data), y=ATSG)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g3 = ggplot(dados, aes(x = as.Date(Data), y=AVNW)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g4 = ggplot(dados, aes(x = as.Date(Data), y=BOOM)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g5 = ggplot(dados, aes(x = as.Date(Data), y=BREW)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g6 = ggplot(dados, aes(x = as.Date(Data), y=BRK_A)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g7 = ggplot(dados, aes(x = as.Date(Data), y=CPRT)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g8 = ggplot(dados, aes(x = as.Date(Data), y=EZPW)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g9 = ggplot(dados, aes(x = as.Date(Data), y=HWKN)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g10 = ggplot(dados, aes(x = as.Date(Data), y=HXL)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g11 = ggplot(dados, aes(x = as.Date(Data), y=HZO)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g12 = ggplot(dados, aes(x = as.Date(Data), y=IART)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g13 = ggplot(dados, aes(x = as.Date(Data), y=IBKC)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g14 = ggplot(dados, aes(x = as.Date(Data), y=INGR)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g15 = ggplot(dados, aes(x = as.Date(Data), y=MPWR)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g16 = ggplot(dados, aes(x = as.Date(Data), y=INO)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g17 = ggplot(dados, aes(x = as.Date(Data), y=INSM)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g18 = ggplot(dados, aes(x = as.Date(Data), y=INSY)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g19 = ggplot(dados, aes(x = as.Date(Data), y=SEAC)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g20 = ggplot(dados, aes(x = as.Date(Data), y=MCHP)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g21 = ggplot(dados, aes(x = as.Date(Data), y=MCHX)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g22 = ggplot(dados, aes(x = as.Date(Data), y=NTRS)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g23 = ggplot(dados, aes(x = as.Date(Data), y=NUAN)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g24 = ggplot(dados, aes(x = as.Date(Data), y=SCSS)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g25 = ggplot(dados, aes(x = as.Date(Data), y=TBBK)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g26 = ggplot(dados, aes(x = as.Date(Data), y=TCBK)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g27 = ggplot(dados, aes(x = as.Date(Data), y=UTHR)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g28 = ggplot(dados, aes(x = as.Date(Data), y=YRCW)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g29 = ggplot(dados, aes(x = as.Date(Data), y=YUM)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g30 = ggplot(dados, aes(x = as.Date(Data), y=ZIXI)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+
+
+```
+
+```{r}
+data2 = as.data.frame(dados)
+
+rownames(data2) = data2[,1]
+data2[,1] <- NULL
+
+#zoo(data2)
+#ys <- TawnyPortfolio(data2)
+#S.hat <- cov_shrink(ys)
+
+retorno = Return.calculate(data2, method = "log")
+retorno2 = retorno
+retorno2$Data = rownames(retorno)
+retorno2 =  retorno2[complete.cases(retorno2),]
+S.hat_shrink2 = covEstimation(as.matrix(retorno[2:length(retorno),]), control = list(type = 'lw'))
+
+media_retorno = meanEstimation(as.matrix(retorno[2:length(retorno),]))
+
+ws <- optimalPortfolio(Sigma = S.hat_shrink2, mu=media_retorno)
+
+#ia$cov = tawny::cov.shrink(ia$hist.returns) 
+#ef.risk.cov.shrink = portopt(ia, constraints, 50, 'Risk Ledoit-Wolf', equally.spaced.risk = T)
+         
+#ia = ia.original
+     
+# Plot multiple Efficient Frontiers and Transition Maps
+#layout( matrix(c(1,1,2,3), nrow = 2, byrow=T) )
+#plot.ef(ia, list(ef.risk, ef.risk.cov.shrink), portfolio.risk, F)
+
+```
+
+
+```{r}
+g31 = ggplot(retorno2, aes(x = as.Date(Data), y=AAPL)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Retorno")+theme_bw()
+
+ggplot(retorno2, aes(x = BREW, y=ATSG)) + geom_point() + xlab("") + ylab("Retorno")+theme_bw()
+
+g32 = ggplot(retorno2, aes(x = as.Date(Data), y=ATSG)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Retorno")+theme_bw()
+
+#g33 = ggplot(retorno2, aes(x = as.Date(Data), y=AVNW)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Retorno")+theme_bw()
+
+g34 = ggplot(retorno2, aes(x = as.Date(Data), y=BOOM)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g35 = ggplot(retorno2, aes(x = as.Date(Data), y=BREW)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Retorno")+theme_bw()
+
+#g36 = ggplot(retorno2, aes(x = as.Date(Data), y=BRK_A)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+#g37 = ggplot(retorno2, aes(x = as.Date(Data), y=CPRT)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+#g38 = ggplot(retorno2, aes(x = as.Date(Data), y=EZPW)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+#g39 = ggplot(retorno2, aes(x = as.Date(Data), y=HWKN)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g40 = ggplot(retorno2, aes(x = as.Date(Data), y=HXL)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Retorno")+theme_bw()
+
+#g41 = ggplot(retorno2, aes(x = as.Date(Data), y=HZO)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g42 = ggplot(retorno2, aes(x = as.Date(Data), y=IART)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+#g43 = ggplot(retorno2, aes(x = as.Date(Data), y=IBKC)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+#g44 = ggplot(retorno2, aes(x = as.Date(Data), y=INGR)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+#g45 = ggplot(retorno2, aes(x = as.Date(Data), y=MPWR)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+#g46 = ggplot(retorno2, aes(x = as.Date(Data), y=INO)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+#g47 = ggplot(retorno2, aes(x = as.Date(Data), y=INSM)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g48 = ggplot(retorno2, aes(x = as.Date(Data), y=INSY)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Retorno")+theme_bw()
+
+#g49 = ggplot(retorno2, aes(x = as.Date(Data), y=SEAC)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+#g50 = ggplot(retorno2, aes(x = as.Date(Data), y=MCHP)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g51 = ggplot(retorno2, aes(x = as.Date(Data), y=MCHX)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Retorno")+theme_bw()
+
+g52 = ggplot(retorno2, aes(x = as.Date(Data), y=NTRS)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Retorno")+theme_bw()
+
+g53 = ggplot(retorno2, aes(x = as.Date(Data), y=NUAN)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Retorno")+theme_bw()
+
+g54 = ggplot(retorno2, aes(x = as.Date(Data), y=SCSS)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Retorno")+theme_bw()
+
+g55 = ggplot(retorno2, aes(x = as.Date(Data), y=TBBK)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Retorno")+theme_bw()
+
+#g56 = ggplot(retorno2, aes(x = as.Date(Data), y=TCBK)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+#g57 = ggplot(retorno2, aes(x = as.Date(Data), y=UTHR)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+g58 = ggplot(retorno2, aes(x = as.Date(Data), y=YRCW)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+#g59 = ggplot(retorno2, aes(x = as.Date(Data), y=YUM)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+#g60 = ggplot(retorno2, aes(x = as.Date(Data), y=ZIXI)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Preço")+theme_bw()
+
+```
+
+```{r}
+#estatisticas descritivas
+
+
+result_p_value = as.vector(sapply(retorno2[,1:30],function(x){ifelse(shapiro.test(x)$p.value < 0.0001, "< 0.001",round(tu$p.value,4))}))
+
+
+
+stats_descr_retorno = as.data.frame(describe(retorno2[,1:30]))
+stats_descr_retorno = stats_descr_retorno[-c(1,2,5,6,7,12)]
+stats_descr_retorno$P_Valor = result_p_value 
+stats_descr_retorno$ID=c(1,2,1,1,2,2,1,1,2,2,2,1,2,1,1,2,1,1,2,2,1,2,2,2,2,2,2,1,1,1) 
+names(stats_descr_retorno)=c("Média","SD","Min", "Máx","Assimetria","Curtose","SE","P Valor","ID")
+stats_descr_retorno$Média=percent(stats_descr_retorno$Média)
+stats_descr_retorno$SD=percent(stats_descr_retorno$SD)
+stats_descr_retorno$SE=percent(stats_descr_retorno$SE)
+stats_descr_retorno$Min=round(stats_descr_retorno$Min,3)
+stats_descr_retorno$Máx=round(stats_descr_retorno$Máx,3)
+stats_descr_retorno$Assimetria=round(stats_descr_retorno$Assimetria,3)
+stats_descr_retorno$Curtose=round(stats_descr_retorno$Curtose,3)
+```
+
+```{r}
+eff <- eff.frontier(returns=retorno[-1,], lw="yes",short="yes", max.allocation=.50,
+                    risk.premium.up=1, risk.increment=.001)
+# Find the optimal portfolio
+eff.optimal.point <- eff[eff$sharpe==max(eff$sharpe),]
+
+# graph efficient frontier
+# Start with color scheme
+ealred <- "#7D110C"
+ealtan <- "#CDC4B6"
+eallighttan <- "#F7F6F0"
+ealdark <- "#423C30"
+
+g61 = ggplot(eff, aes(x=Std.Dev, y=Exp.Return)) + geom_point(alpha=.1, color=ealdark) + geom_point(data=eff.optimal.point, aes(x=Std.Dev, y=Exp.Return, label=sharpe),color=ealred, size=5)+annotate(geom="text", x=eff.optimal.point$Std.Dev,y=eff.optimal.point$Exp.Return,label=paste("Risco: ",round(eff.optimal.point$Std.Dev*100, digits=3),"\nRetorno: ",round(eff.optimal.point$Exp.Return*100, digits=4),"%\nSharpe: ",round(eff.optimal.point$sharpe*100, digits=2), "%", sep=""),hjust=0, vjust=1.2) +ggtitle("Fronteira Eficiente e Portfólio òtimo") +labs(x="Risco (desvio padrão do portfólio)", y="Retorno") +theme(panel.background=element_rect(fill=eallighttan),text=element_text(color=ealdark),plot.title=element_text(size=24, color=ealred))+theme_bw()
+
+eff <- eff.frontier(returns=retorno[-1,], lw="no",short="yes", max.allocation=.50,
+                    risk.premium.up=1, risk.increment=.001)
+# Find the optimal portfolio
+eff.optimal.point <- eff[eff$sharpe==max(eff$sharpe),]
+
+# graph efficient frontier
+# Start with color scheme
+ealred <- "#7D110C"
+ealtan <- "#CDC4B6"
+eallighttan <- "#F7F6F0"
+ealdark <- "#423C30"
+
+g62 = ggplot(eff, aes(x=Std.Dev, y=Exp.Return)) + geom_point(alpha=.1, color=ealdark) +
+  geom_point(data=eff.optimal.point, aes(x=Std.Dev, y=Exp.Return, label=sharpe),
+             color=ealred, size=5) +
+  annotate(geom="text", x=eff.optimal.point$Std.Dev,
+           y=eff.optimal.point$Exp.Return,
+           label=paste("Risco: ",
+                       round(eff.optimal.point$Std.Dev*100, digits=3),"\nRetorno: ",
+                       round(eff.optimal.point$Exp.Return*100, digits=4),"%\nSharpe: ",
+                       round(eff.optimal.point$sharpe*100, digits=2), "%", sep=""),
+           hjust=0, vjust=1.2) +
+  ggtitle("Fronteira Eficiente e Portfólio òtimo") +
+  labs(x="Risco (desvio padrão do portfólio)", y="Retorno") +
+  theme(panel.background=element_rect(fill=eallighttan),
+        text=element_text(color=ealdark),
+        plot.title=element_text(size=24, color=ealred))+theme_bw()
+
+
+```
+
+\newpage
+
+# Introdução
+
+O objetivo deste relatório parcial é mostrar o comportamento dos ativos que compõem o portfólio por meio das análises descritivas e de um teste estatístico para avaliação da distribuição dos retornos. Iremos realizar uma análise descritiva para observar o comportamento dos retornos obtidos ao longo do tempo a fim de identificar algumas causas de aumento ou queda no retorno. 
+
+Para fins de observação dos dados, obtivemos a matriz de correlações para verificarmos se há algum comportamento de aumento ou queda simultânea dos retornos, pois a correlação obtida mede o grau de dependência linear entre as variáveis. Serão introduzidos conceitos como retorno e volatilidade, índice de Sharpe, as suposições para montagem de um portfólio e considerações sobre o software que será utilizado para otimização do portfólio.
+
+Na segunda seção, será apresentada a análise preliminar dos dados, na qual destacamos os conceitos de retorno e volatilidade, assim como se analisará o comportamento geral dos 30 retornos dos ativos e suas correlações com outros. Em seguida, na terceira seção,  mostramos a interpretação e a forma de cálculo do Índice de Sharpe, apresentaremos as suposições para construção do portfólio que será ajustado posteriormente.
+
+
+# Análises preliminares
+
+Antes de realizar as análises descritivas, serão conceituados alguns termos utilizados em finanças quantitativas para melhor compreensão do texto a seguir.
+
+## Fundamentação Teórica: conceituação
+
+### Retorno 
+
+O retorno é o ganho ou perda de um investimento em período de tempo. Usualmente ele é calculado como o log-retorno do investimento i, no tempo t e definido como: $r_{i,t} = log(P_{i,t})-log(P_{i,t-1})$.
+
+Para trabalhos envolvendo séries financeiras, é preferível a utilização da variável retorno ao invés da variável preço pois os retornos possuem características facilitadores. Outro atributo das séries de retornos é que presentam agrupamentos de volatilidade ao longo do tempo.
+
+### Volatilidade
+
+Outro conceito importante é o de volatilidade, que é uma medida estatística de dispersão dos retornos em torno da média destes,  definida como: $h_t = E_{t-1} ((r_t - \mu_t )^2 )$, onde $\mu_t = E(r_t |F_{t-1} ) = E_{t-1} (r_t )$ é o valor esperado condicionado à informação até o tempo $t-1$. 
+
+A volatilidade pode ser estimada pelo desvio padrão amostral, cuja vantagem é a facíl obtenção.
+
+### Portfólio
+
+Portfólio é definido como uma coleção de investimentos mantida por um indivíduo ou por uma instituição visando a diversificação como uma forma de mitigação de riscos não-sistêmicos, uma vez que estes são inerentes à própria empresa ou a um determinado setor, ou seja, fatos que afetam apenas o ativo em questão ou o setor em questão. Os riscos sistêmicos, que são referentes ao risco de colapso de sistema financeiro que pode impactar as taxas de juros e câmbio e os preços dos ativos em geral, não podem ser mitigados via diversificação de portfólio devido a sua natureza, e por isso são chamados também de risco de mercado. 
+
+## Análise descritiva
+
+Nesta parte do relatório, analisaremos os retornos diários de trinta ações que comporão o futuro portfólio a ser analisado. O banco de dados  é composto por trinta preços diários de fechamento da bolsa de valores NASDAQ e ss ativos estão referenciadas através das siglas utilizadas na NASDAQ e são: AAPL (Apple), ATSG (Aaron's, Inc), AVNW (Aviat Networks Inc), BOOM (Dmc Global Inc), BREW (Craft Brew Alliance Inc), BRK_A (Berkshire Hathaway Inc. Class A), CASH (Meta Financial Group Inc.), CPRT (Copart, inc), EZPW (EZCORP Inc), HWKN (Hawkins, Inc.), HXL  (Hexcel Corporation), HZO  (MarineMax Inc), IART (Integra Lifesciences Holdings Corp), IBKC (IBERIABANK Corp), INGR (Ingredion Inc), ININ (INTERACTIVE INTELLIGENCE INC), INO  (Inovio Pharmaceuticals Inc), INSM (Insmed Incorporated), INSY (Insys Therapeutics Inc), KRNY (Kearny Financial Corp), MCHP (Microchip Technology Inc), MCHX (Marchex, Inc), NTRS (Northern Trust Corporation), NUAN (Nuance Communications Inc), SCSS (Select Comfort Corp), UTHR (United Therapeutics Corporation), TBBK (Bancorp Inc), TCBK (TriCo Bancshares), YRCW  (YRC Worldwide Inc), YUM (Yum! Brands, Inc), ZIXI (Zix Corporation).
+
+Utilizaremos 10 gráficos de retornos para análise como forma de exemplificar o modo com o qual pode se averiguar as relações entre duas ou mais retornos, assim como também pretendemos averiguar alguns motivos que fazem com que um retorno ter maior valor do que outra. Busca-se igualmente identificar, por meio do Teste de Shapiro Wilk, se estes retornos advém da Distribuição Normal. 
+
+As análises gráficas a seguir são realizadas sobre a série de retornos diários de cada ação. As estatísticas descritivas que serão utilizadas são: média, desvio padrão, correlação, assimetria e curtose. 
+
+
+As estatstísticas descritivas estão apresentadas abaixo na Tabela 1 e os gráficos, posicionados abaixo e referenciados pelas Figuras 1 e 2. 
+
+Antes de começarmos as análises, deve-se notar que pelos resultados vistos na Tabela 1, obtidos a partir Teste de Shapiro Wilk, vê-se que todos os retornos obtidos não seguem uma distribuição normal, o que deveria ocorrer caso a hipótese nula não fosse rejeitada. Este resultado pode nos ajudar a entender o que a assimetria e a curtose dos retornos têm a dizer sobre a forma das respectivas distribuições.
+
+Para análise dos retornos, separamos os dados em dois grupos por meio de análise gráfica, que podem ser vistas nos Gráficos 1 e 2, sendo o primeiro mostrando 5 séries que resumem o comportamento visto no primeiro grupo e as outras 5, a do segundo grupo. O primeiro é o conjunto que pela análise, não se mostrou afetada pela crise de 2008-2009, ou seja, o retorno mais positivo ou mais negativo que se destaca em relação ao restante das observações não está compreendido no período de tempo de 2008-2009. Neste conjunto estão as ações: AAPL, AVNW, BOOM, CPRT, EZPW, IART, INGR, MPWR, INSM, INSY, MCHX, YRCW, YUM e ZIXI. 
+
+O segundo conjunto compreende os retornos que foram influenciados pela crise, no qual o retorno mais positivo ou mais negativo esteve compreendido no período entre 2008-2009 e são: ATSG, BREW, BRK_A, HWKN, HXL, HZO, IBKC, INO, SEAC, MCHP, NTRS, NUAN, SCSS, TBBK, TCBK, UTHR.  
+
+
+A priori, iremos primeiramente analisar as principais características que são semelhantes nos retornos do primeiro grupo. Podemos ver na Tabela 1 , que a grande maioria das ações possui retorno positivo,  indicando ganho quando se investe nessas ações, havendo exceções para as ações INSY, MCHX e YRCW, nas quais vê-se que há retorno negativos.
+
+Podemos observar que para este grupo, o padrão de variabilidade dos dados se configura de maneira parecida, com o erro padrão, na coluna SE da Tabela 1, tendo valores menores que 0,1%, com exceção dos retornos dos ativos AVNW, INSM,INSY E YRCM,  que possuem erros padrão de respectivamente: `r stats_descr_retorno[3,7]`, `r stats_descr_retorno[18,7]`,`r stats_descr_retorno[19,7]` e `r stats_descr_retorno[28,7]`e que assim indicam que são retornos que apresentam maior volatilidade em relação aos demais do mesmo grupo. Já para o segundo agrupamento podemos ver que a variabilidade, na coluna SE, são menores que 0.1%, com ressalva ao retorno do ativo INO, que possui SE=`r stats_descr_retorno[16,7]`. Então podemos presumir que excetuando as exceções, as variabilidades tanto para o primeiro quanto para o segundo grupo são parecidas 
+
+Podemos ver que, neste agrupamento, os valores das curtoses em todos os retornos são diferentes de 0 e  indicam que as respectivas leis de probabilidade possuem achatamento diferente  em relação ao da distribuição normal, mas vale ressaltar que esses resultados são bem distintos entre cada retorno, valendo observar que  7 dos 14 retornos dos ativos que compõem o primeiro grupo tem em média curtose negativa,`r round(mean(subset(stats_descr_retorno, ID==1)$Curtose),2)`, ou seja, as distribuições  são mais achatadas que a distribuição normal .  Já para o segundo agrupamento, em média, a curtose é positiva, com valor `r round(mean(subset(stats_descr_retorno, ID==2)$Curtose),2)`, indicando que o grau achatamento é igual ao da Normal, além de apontar que, em geral, as distribuições dos retornos deste grupo têm caudas mais pesadas que aquela distribuição.   O primeiro grupo, no entanto, possui distribuições com caudas mais pesadas do que a normal, como as que se apresentam nos retornos dos ativos AVNM, INSM, YRCM, enquanto no segundo grupo há distribuições mais achatadas que a Normal, como as que se apresentam nos retornos dos ativos MCHP, SCSS e UTHR.  
+
+Para os valores da assimetria, temos que para todas as distribuições dos retornos a assimetria é positiva, ou seja, a cauda da direita da distribuição é maior que a da esquerda. Temos diferenças entre os dois grupos analisados pois o primeiro grupo apresenta, em geral, coeficientes de assimetria, em média, maiores que o do segundo grupo, com valores respectivos `r round(mean(subset(stats_descr_retorno, ID==1)$Assimetria),2)` e `r round(mean(subset(stats_descr_retorno, ID==2)$Assimetria),2)`. 
+
+Então, podemos inferir de maneira geral que as distribuições dos retornos para os ativos não seguem uma distribuição normal, com todas possuindo assimetria positiva. Apenas uma parte delas, a 5, tem caudas mais pesadas que a da distribuição normal.
+
+
+Nos Gráfico 3, vamos olhar para a estrutura de correlação entre os retornos dos ativos pois estamos interessados nos retornos que tem correlação negativa, ou seja, quando um retorno cresce, outro cai. Queremos este comportamento pois interessa nos que a perda em retorno seja compensado pelo ganho no retorno em outro. Consideramos ainda que correlações entre -0.2 e 0.2 são baixas, entre 0.2 e 0.7 ou entre -0.2 e -0.7 são fracamente correlacionadas e entre 0.7 e 1 e entre 0.7 e 1 são altamente correlacionadas. 
+
+Vemos que para ação HWKN, as maiores correlações positivas são com retornos dos ativos BREW, BRW_A,HXL, INGR, com os respectivos valores `r round(corr["HWKN","BREW"],2)`, `r round(corr["HWKN","BRK_A"],2)`, `r round(corr["HWKN","HXL"],2)` e `r round(corr["HWKN","INGR"],2)`. Ou seja, dado o crescimento no retorno de HWKN, os outros retornos crescerão também.  Já as maiores correlações negativas são com os retorno dos ativos BOOM, MCHX, com os respectivos valores `r round(corr["HWKN","BOOM"],2)` e `r round(corr["HWKN","MCHX"],2)`. Portanto, quando o valor do retorno de HWKN cai, os retornos de BOOM e MCHX crescerão, o que é mais produtivo para montagem do portfólio. Essa mesma análise pode ser feita para o retorno dos outros ativos.
+
+Realizando a mesma análise anterior, vemos que a carteira está bem planejada, pois vemos que o número de ações que tem correlação negativa é alta.
+
+```{r, fig.height=7.5, fig.width=6}
+grid.arrange(g31,g34,g42,g48,g58,nrow=5,ncol=1)
+
+
+```
+
+\begin{center}
+`r legenda_graf1`
+\end{center}
+
+\newpage
+
+```{r,fig.height=7.5, fig.width=6}
+grid.arrange(g35,g52,g53,g54,g55,nrow=5,ncol=1)
+
+```
+
+\begin{center}
+ `r legenda_graf2`
+\end{center}
+
+\newpage
+
+```{r }
+# IART IBKC INGR MPWR INO INSM INSY SEAC MCHP MCHX NTRS NUAN SCSS TBBK TCBK UTHR YRCW YUM ZIXI 
+kable(stats_descr_retorno, "latex", booktabs = T) %>%
+  kable_styling(font_size=7)
+
+#(stats_desc = as.data.frame(stat.desc(as.matrix(dados[,2:31]), desc=TRUE, norm=TRUE, p=0.95)))
+```
+
+
+\begin{center}
+ `r legenda_table1`
+\end{center}
+
+
+```{r fig.height=7.5, fig.width=6}
+corrplot(corr,type="upper", order="hclust", col=c("black", "white"),bg="lightblue")
+```
+
+
+\begin{center}
+ `r legenda_graf4`
+\end{center}
+
+\newpage
+
+# Portfólio: Suposições tomadas e fronteira eficiente
+
+Nesta parte apresentaremos as suposições acerca do portfólio que será otimizado e do programa computacional que realizará os cálculos, além da apresentação de dois conceitos fundamentais em finanças e  
+
+## Construção de portfólios
+
+Desde o trabalho seminal de Markowitz (1952), a Teoria Moderna de Portfólio tem sido a maneira mais utilizada de se escolher ações para investimento. Os dois preceitos fundamentais são: o retorno esperado para cada ação, que representa ao gerente de portfólio capacidade de previsão de futuros movimentos de preços e a matriz de covariância do retorno de ações,configurando o controle de risco.
+
+O modelo proposto pelo autor proporciona ao investidor uma alocação otimizada de recursos entre ações visando um equilíbrio entre risco e retorno. Essa construção teórica formaliza o princípio de que as únicas variáveis de decisão para a seleção de um ativo são o valor esperado e a variância das taxas de retorno no espaço de tempo considerado[4].
+
+Seja uma carteira de investimentos $P$ composta de $n$ ativos e os retornos relativos a ela sejam respectivamente $r_1,r_2,\dots,r_n$ e os retornos esperados $R_1,R_2,\dots,R_n$ e a matriz covariância $\Sigma$. É investido uma proporção $\omega_i$ na ação com retorno $R_i$, onde cada $\omega_i$ é chamado de peso ótimo tal que: $P=\sum_{i=1}^{n}\omega_i R_i$ , $\sum_{i=1}^{n}\omega_i = 1$.
+
+Seja $\omega^{'} = (\omega_1,\omega_2,\dots, \omega_n)$, $R^{'} = (R_1,R_2,\dots, R_n)$, $r^{'} = (r_1,r_2,\dots, r_n)$ e $\Sigma = Cov(R)$. A média e variância do retorno P, denotadas respectivamente por $\mu$ e $\Sigma$ são dadas por: $\mu = \sum_{i=1}^{n}\omega_ir_i$ e $\sigma^{2}  = \sum_{i=1}^{n}\sum_{j=1}^{n}\omega_iCov(R_i , R_j) = \omega^{'}\Sigma\omega$. 
+
+Há duas otimizações dentre as mais conhecidas para abordagem do problema em questão, as quais são:
+
+1. Maximizar $\mu$ com um limitante superior para $\sigma$: $\sigma^2<q$
+
+2. Minimizar $\sigma^2$ com um valor objetivo para $\mu$
+
+## Otimização do portfólio
+
+Utilizaremos o segundo método  descrito acima para otimizar o portfólio a ser apresentado em futuro trabalho com o auxílio da a função *portfolio.optim* do pacote *tseries* que possbilita ajustarmos um portfólio dando como parâmetros a matriz de covariância desejada, o vetor de retorno esperado, a taxa de risco livre, se é possível ter vendas curtas. O valor objetivo $\mu$ será a média dos retornos diários.
+
+## Fronteira Eficiente
+
+A fronteira eficiente descreve o relacionamento entre o retorno que pode ser esperado de uma carteira e da volatilidade da carteira. Pode ser extraída na forma de uma curva em um gráfico do risco de encontro a retorno previsto de uma carteira. A fronteira eficiente dá o melhor retorno que pode ser esperado para um dado nível de risco ou o mais baixo nível de risco necessário conseguir uma taxa de retorno prevista dada.
+
+
+```{r}
+#g62
+
+#\begin{center}
+# `r legenda_graf7`
+#\end{center}
+
+```
+
+## Índice de Sharpe
+
+Para avaliação do desempenho da otimização do portfólio, utiliza-se o índice de Sharpe, calculado como: $I_{s}=\frac{(R_{i}-R{f})}{\sigma_{i}}$, onde $R_{i}$ é o Retorno do Ativo, $R{f}$ é retorno livre de risco e $\sigma_{i}$ é o Risco do Ativo. Sua interpretação é dada por:para cada 1 ponto de risco que o investidor teve no passado houve um prêmio de $I_{s}$ pontos de rentabilidade acima daquela que ele receberia se tivesse optado por um investimento livre de risco. O retorno livre de risco considerado nas análises será de 0%.
+
+
+# Referências
+
+[1] https://cran.r-project.org/index.html
+
+[2] https://www.rstudio.com/products/rstudio/download/
+
+[3] Markowitz, H.M. (Março 1952). "Portfolio Selection". The Journal of Finance. pags: 77–91
+

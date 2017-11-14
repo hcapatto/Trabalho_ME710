@@ -81,7 +81,7 @@ knitr::opts_chunk$set(fig.align='center', echo=FALSE, warning=FALSE, message=FAL
 
 #pacotes = c("tidyverse","reshape2","knitr","captioner","gdata","gridExtra","Matrix","plotrix","xtable")
 
-packages= c("tidyverse","data.table","reshape2","captioner","gridExtra","xtable","ggpubr","MASS", "ggfortify","ICtest","pastecs","psych","xtable","quadprog","PerformanceAnalytics","corrplot","scales","knitr", "kableExtra")
+packages= c("tidyverse","data.table","reshape2","captioner","gridExtra","xtable","ggpubr","MASS", "ggfortify","ICtest","pastecs","psych","xtable","quadprog","PerformanceAnalytics","corrplot","scales","knitr","RiskPortfolios","kableExtra","formattable")
 
 
 #install.packages(packages)
@@ -102,7 +102,7 @@ tbls <- captioner(prefix="Tabela")
 #legenda para as tabelas
 
 # legenda para a primeira tabela(estats descr) do primeiro exercício
-legenda_table1 = tbls(name="table_estat_descr1",caption = "Estatísticas Descritivas para o Retorno diário. A coluna P Valor é referente ao valor p do Teste de Shapiro Wilk aplicado ao retorno de cada ação. SD: Desvio Padrão. SE: Erro Padrão. Para análise dos retornos, separamos os dados em dois grupos por meio de análise gráfica. Grupo 1: pela análise, não mostraram afetados pela crise de 2008-2009, ou seja, o retorno mais positivo ou mais negativo que se destaca em relação ao restante das observações não está compreendido no período de tempo de 2008-2009. Grupo 2: compreende os retornos que foram influenciados pela crise, no qual o retorno mais positivo ou mais negativo esteve compreendido no período entre 2008-2009.")
+legenda_table1 = tbls(name="table_estat_descr1",caption = "Estatísticas Descritivas para o Retorno diário. A Tabela está ordenada pela ordem alfabética da sigla de cada ativo. A coluna P Valor é referente ao valor p do Teste de Shapiro Wilk aplicado ao retorno de cada ação. SD: Desvio Padrão. SE: Erro Padrão. Para análise dos retornos, separamos os dados em dois grupos, coluna ID por meio de análise gráfica. Grupo 1: pela análise, não mostraram afetados pela crise de 2008-2009, ou seja, o retorno mais positivo ou mais negativo que se destaca em relação ao restante das observações não está compreendido no período de tempo de 2008-2009. Grupo 2: compreende os retornos que foram influenciados pela crise, no qual o retorno mais positivo ou mais negativo esteve compreendido no período entre 2008-2009.")
 
 legenda_table2 = tbls(name="table_aic_bic",caption = "Comparação dos modelos")
 legenda_table3 = tbls(name="table_esti_testedenulidade",caption = "Estimativas dos parâmetros, intervalo de confiança e teste de nulidade")
@@ -237,9 +237,9 @@ func_corr= function(x,num1){
 
 ```{r dados, cache=TRUE, eval=TRUE}
 
-#path_arq = glue::glue(getwd(),'wiki_prices_redux.csv')
+path_arq = glue::glue(getwd(),'/dados_proposta_ra146406.csv')
 
-dados = fread("/Users/ra146406/Documents/Trabalho_ME710/dados_proposta_ra146406.csv", showProgress = FALSE)
+dados = fread(path_arq, showProgress = FALSE)
 
 corr = cor(dados[,2:31])
 ```
@@ -344,8 +344,6 @@ ws <- optimalPortfolio(Sigma = S.hat_shrink2, mu=media_retorno)
 ```{r}
 g31 = ggplot(retorno2, aes(x = as.Date(Data), y=AAPL)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Retorno")+theme_bw()
 
-ggplot(retorno2, aes(x = BREW, y=ATSG)) + geom_point() + xlab("") + ylab("Retorno")+theme_bw()
-
 g32 = ggplot(retorno2, aes(x = as.Date(Data), y=ATSG)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Retorno")+theme_bw()
 
 #g33 = ggplot(retorno2, aes(x = as.Date(Data), y=AVNW)) + geom_line() + scale_x_date(date_labels = "%Y", date_breaks = "1 year") + xlab("") + ylab("Retorno")+theme_bw()
@@ -412,18 +410,18 @@ g58 = ggplot(retorno2, aes(x = as.Date(Data), y=YRCW)) + geom_line() + scale_x_d
 
 result_p_value = as.vector(sapply(retorno2[,1:30],function(x){ifelse(shapiro.test(x)$p.value < 0.0001, "< 0.001",round(tu$p.value,4))}))
 
-
+as.vector(sapply(retorno2[,1:30],function(x){ifelse(jarque.bera.test(x)$p.value < 0.0001, "< 0.001",round(jarque.bera.test$p.value,4))}))
 
 stats_descr_retorno = as.data.frame(describe(retorno2[,1:30]))
-stats_descr_retorno = stats_descr_retorno[-c(1,2,5,6,7,12)]
+stats_descr_retorno = stats_descr_retorno[-c(1,2,5,6,7,10)]
 stats_descr_retorno$P_Valor = result_p_value 
 stats_descr_retorno$ID=c(1,2,1,1,2,2,1,1,2,2,2,1,2,1,1,2,1,1,2,2,1,2,2,2,2,2,2,1,1,1) 
 names(stats_descr_retorno)=c("Média","SD","Min", "Máx","Assimetria","Curtose","SE","P Valor","ID")
 stats_descr_retorno$Média=percent(stats_descr_retorno$Média)
 stats_descr_retorno$SD=percent(stats_descr_retorno$SD)
 stats_descr_retorno$SE=percent(stats_descr_retorno$SE)
-stats_descr_retorno$Min=round(stats_descr_retorno$Min,3)
-stats_descr_retorno$Máx=round(stats_descr_retorno$Máx,3)
+stats_descr_retorno$Min=percent(stats_descr_retorno$Min)
+stats_descr_retorno$Máx=percent(stats_descr_retorno$Máx)
 stats_descr_retorno$Assimetria=round(stats_descr_retorno$Assimetria,3)
 stats_descr_retorno$Curtose=round(stats_descr_retorno$Curtose,3)
 ```
@@ -480,52 +478,102 @@ g62 = ggplot(eff, aes(x=Std.Dev, y=Exp.Return)) + geom_point(alpha=.1, color=eal
 
 O objetivo deste relatório parcial é mostrar o comportamento dos ativos que compõem o portfólio por meio das análises descritivas e de um teste estatístico para avaliação da distribuição dos retornos. Iremos realizar uma análise descritiva para observar o comportamento dos retornos obtidos ao longo do tempo a fim de identificar algumas causas de aumento ou queda no retorno. 
 
-Para fins de observação dos dados, obtivemos a matriz de correlações para verificarmos se há algum comportamento de aumento ou queda simultânea dos retornos, pois a correlação obtida mede o grau de dependência linear entre as variáveis. Serão introduzidos conceitos como retorno e volatilidade, índice de Sharpe, as suposições para montagem de um portfólio e considerações sobre o software que será utilizado para otimização do portfólio.
+Para investigação dos dados, obtivemos a matriz de correlações para verificarmos se há algum comportamento de aumento ou queda simultânea dos retornos, pois a correlação obtida mede o grau de dependência linear entre as variáveis. Serão introduzidos conceitos como retorno e volatilidade, índice de Sharpe, as suposições para montagem de um portfólio e considerações sobre o software que será utilizado para otimização do portfólio.
 
-Na segunda seção, será apresentada a análise preliminar dos dados, na qual destacamos os conceitos de retorno e volatilidade, assim como se analisará o comportamento geral dos 30 retornos dos ativos e suas correlações com outros. Em seguida, na terceira seção,  mostramos a interpretação e a forma de cálculo do Índice de Sharpe, apresentaremos as suposições para construção do portfólio que será ajustado posteriormente.
+Na segunda seção, conceituamos retorno, volatilidade, portfólio, índice de sharpe. fronteira eficiente e taxa de retorno livre de risco. Na terceira seção analisaremos o comportamento geral dos 30 retornos dos ativos, atráves de análise gráfica, descritiva, incluindo uma análise de correlações.  Em seguida, na terceira seção,  mostramos a interpretação e a forma de cálculo do Índice de Sharpe, apresentaremos as suposições para construção do portfólio que será ajustado posteriormente.
 
+Para essas análises foram utilizados os softwares *R*[1] e *Rstudio*[2]. Os pacotes do *R* utilizados foram: *tidyverse*,*data.table*,*reshape2*,*captioner*,*gridExtra*,*xtable*,*ggpubr*,*MASS*, *ggfortify*,*ICtest*,*pastecs*,*psych*,*quadprog*,*PerformanceAnalytics*,*corrplot*,*scales*,*knitr*, *kableExtra*,*formattable*.
 
-# Análises preliminares
+# Fundamentação Teórica: conceituação
 
 Antes de realizar as análises descritivas, serão conceituados alguns termos utilizados em finanças quantitativas para melhor compreensão do texto a seguir.
 
-## Fundamentação Teórica: conceituação
-
-### Retorno 
+## Retorno 
 
 O retorno é o ganho ou perda de um investimento em período de tempo. Usualmente ele é calculado como o log-retorno do investimento i, no tempo t e definido como: $r_{i,t} = log(P_{i,t})-log(P_{i,t-1})$.
 
-Para trabalhos envolvendo séries financeiras, é preferível a utilização da variável retorno ao invés da variável preço pois os retornos possuem características facilitadores. Outro atributo das séries de retornos é que presentam agrupamentos de volatilidade ao longo do tempo.
+Para trabalhos envolvendo séries financeiras, é preferível a utilização da variável retorno ao invés da variável preço pois os retornos possuem fatos etilizados, que são:
 
-### Volatilidade
+* Retornos, não são em geral, autocorrelacionados
+
+* As séries de retornos apresentam agrupamentos de volatilidade ao longo do tempo.
+
+* A distribuição (incondicional) dos retornos apresenta caudas mais pesadas do que uma distribuição normal e além disso, a distribuição, embora aproximadamente simétrica, é, em geral,
+leptocúrtica (caudas pesadas);
+
+## Volatilidade
 
 Outro conceito importante é o de volatilidade, que é uma medida estatística de dispersão dos retornos em torno da média destes,  definida como: $h_t = E_{t-1} ((r_t - \mu_t )^2 )$, onde $\mu_t = E(r_t |F_{t-1} ) = E_{t-1} (r_t )$ é o valor esperado condicionado à informação até o tempo $t-1$. 
 
-A volatilidade pode ser estimada pelo desvio padrão amostral, cuja vantagem é a facíl obtenção.
+A volatilidade pode ser estimada pelo desvio padrão amostral, cuja vantagem é a facíl obtenção e por isso foi utilizada no trabalho. 
 
-### Portfólio
+Vale ressalatar que há várias maneiras de se modelar a volatilidade.
 
-Portfólio é definido como uma coleção de investimentos mantida por um indivíduo ou por uma instituição visando a diversificação como uma forma de mitigação de riscos não-sistêmicos, uma vez que estes são inerentes à própria empresa ou a um determinado setor, ou seja, fatos que afetam apenas o ativo em questão ou o setor em questão. Os riscos sistêmicos, que são referentes ao risco de colapso de sistema financeiro que pode impactar as taxas de juros e câmbio e os preços dos ativos em geral, não podem ser mitigados via diversificação de portfólio devido a sua natureza, e por isso são chamados também de risco de mercado. 
+## Portfólio
 
-## Análise descritiva
+Portfólio é definido como uma coleção de investimentos mantida por um indivíduo ou por uma instituição visando a diversificação como uma forma de mitigação de riscos.
 
-Nesta parte do relatório, analisaremos os retornos diários de trinta ações que comporão o futuro portfólio a ser analisado. O banco de dados  é composto por trinta preços diários de fechamento da bolsa de valores NASDAQ e ss ativos estão referenciadas através das siglas utilizadas na NASDAQ e são: AAPL (Apple), ATSG (Aaron's, Inc), AVNW (Aviat Networks Inc), BOOM (Dmc Global Inc), BREW (Craft Brew Alliance Inc), BRK_A (Berkshire Hathaway Inc. Class A), CASH (Meta Financial Group Inc.), CPRT (Copart, inc), EZPW (EZCORP Inc), HWKN (Hawkins, Inc.), HXL  (Hexcel Corporation), HZO  (MarineMax Inc), IART (Integra Lifesciences Holdings Corp), IBKC (IBERIABANK Corp), INGR (Ingredion Inc), ININ (INTERACTIVE INTELLIGENCE INC), INO  (Inovio Pharmaceuticals Inc), INSM (Insmed Incorporated), INSY (Insys Therapeutics Inc), KRNY (Kearny Financial Corp), MCHP (Microchip Technology Inc), MCHX (Marchex, Inc), NTRS (Northern Trust Corporation), NUAN (Nuance Communications Inc), SCSS (Select Comfort Corp), UTHR (United Therapeutics Corporation), TBBK (Bancorp Inc), TCBK (TriCo Bancshares), YRCW  (YRC Worldwide Inc), YUM (Yum! Brands, Inc), ZIXI (Zix Corporation).
+Há dois tipos de riscos e é importante compreender que montar uma estratégia num portfólio significa mitigar um tipo de risco, por isso vamos explicar o que são cada:
 
-Utilizaremos 10 gráficos de retornos para análise como forma de exemplificar o modo com o qual pode se averiguar as relações entre duas ou mais retornos, assim como também pretendemos averiguar alguns motivos que fazem com que um retorno ter maior valor do que outra. Busca-se igualmente identificar, por meio do Teste de Shapiro Wilk, se estes retornos advém da Distribuição Normal. 
+* Risco não-sistêmico são fatos que afetam apenas o ativo em questão ou o setor em questão. 
+
+* Os riscos sistêmicos são referentes ao risco de colapso de sistema financeiro que pode impactar as taxas de juros e câmbio e os preços dos ativos em geral, Vale ressaltar que não podem ser mitigados via diversificação de portfólio devido a sua natureza, e por isso são chamados também de risco de mercado. 
+
+Logo, ao montarmos uma estratégia para montagem e gestão de um portfólio, significa que queremos mitigar o risco não-sistêmico.
+
+
+## Taxa de Retorno livre de risco
+
+A taxa de retorno livre de risco (TRLR) é a taxa de retorno teórica de um investimento com risco zero. A taxa livre de risco representa o interesse que um investidor esperaria de um investimento absolutamente livre de risco durante um determinado período de tempo.
+
+Em teoria, a taxa livre de risco é o retorno mínimo que um investidor espera para qualquer investimento porque ele não aceitará riscos adicionais, a menos que a taxa de retorno potencial seja maior do que a taxa livre de risco.
+
+Na prática, no entanto, a taxa livre de risco não existe, porque mesmo os investimentos mais seguros representam uma pequena quantidade de risco.
+
+
+## Índice de Sharpe
+
+Para avaliação do desempenho da otimização do portfólio, utiliza-se o índice de Sharpe, calculado como: $I_{s}=\frac{(R_{i}-R{f})}{\sigma_{i}}$, onde $R_{i}$ é o Retorno do Ativo, $R{f}$ é retorno livre de risco e $\sigma_{i}$ é o Risco do Ativo. Sua interpretação é dada por:para cada 1 ponto de risco que o investidor teve no passado houve um prêmio de $I_{s}$ pontos de rentabilidade acima daquela que ele receberia se tivesse optado por um investimento livre de risco. O retorno livre de risco considerado nas análises será de 0% pois na prática não há taxa livre de risco.
+
+## Fronteira Eficiente
+
+A fronteira eficiente descreve o relacionamento entre o retorno que pode ser esperado de uma carteira e da volatilidade da carteira. Pode ser extraída na forma de uma curva em um gráfico do risco de encontro a retorno previsto de uma carteira. A fronteira eficiente dá o melhor retorno que pode ser esperado para um dado nível de risco ou o mais baixo nível de risco necessário conseguir uma taxa de retorno prevista dada.
+
+
+# Análise descritiva
+
+Nesta parte do relatório, analisaremos os retornos diários de trinta ações que comporão o portfólio a ser analisado. O banco de dados  é composto por trinta preços diários de fechamento da bolsa de valores NASDAQ e os ativos estão referenciadas através das siglas utilizadas na NASDAQ e são: AAPL (Apple), ATSG (Aaron's, Inc), AVNW (Aviat Networks Inc), BOOM (Dmc Global Inc), BREW (Craft Brew Alliance Inc), BRK_A (Berkshire Hathaway Inc. Class A), CASH (Meta Financial Group Inc.), CPRT (Copart, inc), EZPW (EZCORP Inc), HWKN (Hawkins, Inc.), HXL  (Hexcel Corporation), HZO  (MarineMax Inc), IART (Integra Lifesciences Holdings Corp), IBKC (IBERIABANK Corp), INGR (Ingredion Inc), ININ (INTERACTIVE INTELLIGENCE INC), INO  (Inovio Pharmaceuticals Inc), INSM (Insmed Incorporated), INSY (Insys Therapeutics Inc), KRNY (Kearny Financial Corp), MCHP (Microchip Technology Inc), MCHX (Marchex, Inc), NTRS (Northern Trust Corporation), NUAN (Nuance Communications Inc), SCSS (Select Comfort Corp), UTHR (United Therapeutics Corporation), TBBK (Bancorp Inc), TCBK (TriCo Bancshares), YRCW  (YRC Worldwide Inc), YUM (Yum! Brands, Inc), ZIXI (Zix Corporation). 
+
+Utilizaremos 10 gráficos de retornos para análise como forma de exemplificar o modo com o qual averigua-se as relações entre os retornos e por meio do Teste de Shapiro Wilk, teste de Jarque-Bera, análise da curtose e assimetria , se estes retornos advém da Distribuição Normal. 
 
 As análises gráficas a seguir são realizadas sobre a série de retornos diários de cada ação. As estatísticas descritivas que serão utilizadas são: média, desvio padrão, correlação, assimetria e curtose. 
 
 
 As estatstísticas descritivas estão apresentadas abaixo na Tabela 1 e os gráficos, posicionados abaixo e referenciados pelas Figuras 1 e 2. 
 
-Antes de começarmos as análises, deve-se notar que pelos resultados vistos na Tabela 1, obtidos a partir Teste de Shapiro Wilk, vê-se que todos os retornos obtidos não seguem uma distribuição normal, o que deveria ocorrer caso a hipótese nula não fosse rejeitada. Este resultado pode nos ajudar a entender o que a assimetria e a curtose dos retornos têm a dizer sobre a forma das respectivas distribuições.
+Para análise dos retornos, separamos os dados em dois grupos por meio de análise gráfica, que podem ser vistas nos Gráficos 1 e 2. 
 
-Para análise dos retornos, separamos os dados em dois grupos por meio de análise gráfica, que podem ser vistas nos Gráficos 1 e 2, sendo o primeiro mostrando 5 séries que resumem o comportamento visto no primeiro grupo e as outras 5, a do segundo grupo. O primeiro é o conjunto que pela análise, não se mostrou afetada pela crise de 2008-2009, ou seja, o retorno mais positivo ou mais negativo que se destaca em relação ao restante das observações não está compreendido no período de tempo de 2008-2009. Neste conjunto estão as ações: AAPL, AVNW, BOOM, CPRT, EZPW, IART, INGR, MPWR, INSM, INSY, MCHX, YRCW, YUM e ZIXI. 
+O primeiro mostrando 5 séries que resumem o comportamento visto no primeiro grupo e as outras 5, a do segundo grupo. O primeiro é o conjunto que pela análise, não se mostrou afetada pela crise de 2008-2009, ou seja, o retorno mais positivo ou mais negativo que se destaca em relação ao restante das observações não está compreendido no período de tempo de 2008-2009. Neste conjunto estão as ações: AAPL, AVNW, BOOM, CPRT, EZPW, IART, INGR, MPWR, INSM, INSY, MCHX, YRCW, YUM e ZIXI. 
 
 O segundo conjunto compreende os retornos que foram influenciados pela crise, no qual o retorno mais positivo ou mais negativo esteve compreendido no período entre 2008-2009 e são: ATSG, BREW, BRK_A, HWKN, HXL, HZO, IBKC, INO, SEAC, MCHP, NTRS, NUAN, SCSS, TBBK, TCBK, UTHR.  
 
+Analisaremos primordialmente as principais características que são semelhantes nos retornos do primeiro grupo. Podemos ver na Tabela 1 , que a grande maioria das ações possui em média retorno positivo,  indicando ganho quando se investe nessas ações, havendo exceções para as ações INSY, MCHX e YRCW, nas quais vê-se que em média os retornos são negativos.
 
-A priori, iremos primeiramente analisar as principais características que são semelhantes nos retornos do primeiro grupo. Podemos ver na Tabela 1 , que a grande maioria das ações possui retorno positivo,  indicando ganho quando se investe nessas ações, havendo exceções para as ações INSY, MCHX e YRCW, nas quais vê-se que há retorno negativos.
+
+
+## Distribuição dos retornos
+
+Antes de começarmos as análises gráficas, vamos verificar se a distribuição dos retornos seguem a normalidade, onde preliminarmente vamos introduzir o Teste de Jarque-Bera. 
+
+### Teste de Jarque-Bera
+
+O teste de Jarque-Bera é um teste estatístico que visa utlizar a assimetria e curtose amostral para verificar a normalidade dos dados. A estatística do teste é: $JB = \frac{n-k+1}{6}(S^2+\frac{1}{4}(C-3)^2)$, onde n é o número de observações, S é a assimetria amostral, C é a curtose amostral e k é quantidade de regressores. S e C são obtidos atráves das seguintes equações: $S = \frac{\frac{1}{n}\sum_{i=1}^{n}(x_i-\bar{x})^3}{(\frac{1}{n}\sum_{i=1}^{n}(x_i-\bar{x})^2)^{\frac{3}{2}}}$ e $C = \frac{\frac{1}{n}\sum_{i=1}^{n}(x_i-\bar{x})^4}{(\frac{1}{n}\sum_{i=1}^{n}(x_i-\bar{x})^2)^2}$, onde $\bar{x}$ é a média amostral. 
+
+Se os dados vem de uma distribuição normal, $JB \sim \chi^2_{2}$. A Hipótese nula é a de que conjuntamente a assimeitria e o excesso de curtose são iguais a zero pois amostral que vem de distribuição normal tem assimetria igual a zero e excesso de curtose igual a zero(i.e, curtose igual a 3).
+
+
+Os p-valores obtidos a partir Teste de Shapiro Wilk, vê-se que todos os retornos obtidos não seguem uma distribuição normal, o que deveria ocorrer caso a hipótese nula não fosse rejeitada. Este resultado pode nos ajudar a entender o que a assimetria e a curtose dos retornos têm a dizer sobre a forma das respectivas distribuições.
+
 
 Podemos observar que para este grupo, o padrão de variabilidade dos dados se configura de maneira parecida, com o erro padrão, na coluna SE da Tabela 1, tendo valores menores que 0,1%, com exceção dos retornos dos ativos AVNW, INSM,INSY E YRCM,  que possuem erros padrão de respectivamente: `r stats_descr_retorno[3,7]`, `r stats_descr_retorno[18,7]`,`r stats_descr_retorno[19,7]` e `r stats_descr_retorno[28,7]`e que assim indicam que são retornos que apresentam maior volatilidade em relação aos demais do mesmo grupo. Já para o segundo agrupamento podemos ver que a variabilidade, na coluna SE, são menores que 0.1%, com ressalva ao retorno do ativo INO, que possui SE=`r stats_descr_retorno[16,7]`. Então podemos presumir que excetuando as exceções, as variabilidades tanto para o primeiro quanto para o segundo grupo são parecidas 
 
@@ -585,7 +633,7 @@ corrplot(corr,type="upper", order="hclust", col=c("black", "white"),bg="lightblu
 
 
 \begin{center}
- `r legenda_graf4`
+ `r legenda_graf3`
 \end{center}
 
 \newpage
@@ -600,9 +648,9 @@ Desde o trabalho seminal de Markowitz (1952), a Teoria Moderna de Portfólio tem
 
 O modelo proposto pelo autor proporciona ao investidor uma alocação otimizada de recursos entre ações visando um equilíbrio entre risco e retorno. Essa construção teórica formaliza o princípio de que as únicas variáveis de decisão para a seleção de um ativo são o valor esperado e a variância das taxas de retorno no espaço de tempo considerado[4].
 
-Seja uma carteira de investimentos $P$ composta de $n$ ativos e os retornos relativos a ela sejam respectivamente $r_1,r_2,\dots,r_n$ e os retornos esperados $R_1,R_2,\dots,R_n$ e a matriz covariância $\Sigma$. É investido uma proporção $\omega_i$ na ação com retorno $R_i$, onde cada $\omega_i$ é chamado de peso ótimo tal que: $P=\sum_{i=1}^{n}\omega_i R_i$ , $\sum_{i=1}^{n}\omega_i = 1$.
+Seja uma carteira de investimentos $P$ composta de $n$ ativos e os retornos relativos a ela sejam respectivamente $r_1,r_2,\dots,r_n$ e os retornos esperados $R_1,R_2,\dots,R_n$ e a matriz covariância $\Sigma$. É investido uma proporção $\omega_i$ na ação com retorno $R_i$, onde cada $\omega_i$ é chamado de peso tal que: $P=\sum_{i=1}^{n}\omega_i R_i$ , $\sum_{i=1}^{n}\omega_i = 1$.
 
-Seja $\omega^{'} = (\omega_1,\omega_2,\dots, \omega_n)$, $R^{'} = (R_1,R_2,\dots, R_n)$, $r^{'} = (r_1,r_2,\dots, r_n)$ e $\Sigma = Cov(R)$. A média e variância do retorno P, denotadas respectivamente por $\mu$ e $\Sigma$ são dadas por: $\mu = \sum_{i=1}^{n}\omega_ir_i$ e $\sigma^{2}  = \sum_{i=1}^{n}\sum_{j=1}^{n}\omega_iCov(R_i , R_j) = \omega^{'}\Sigma\omega$. 
+Seja $\omega^{'} = (\omega_1,\omega_2,\dots, \omega_n)$, $R^{'} = (R_1,R_2,\dots, R_n)$, $r^{'} = (r_1,r_2,\dots, r_n)$ e $\Sigma = Cov(R)$. O valor esperado e variância do retorno P, denotadas respectivamente por $\mu$ e $\Sigma$ são dadas por: $\mu = \sum_{i=1}^{n}\omega_ir_i$ e $\sigma^{2}  = \sum_{i=1}^{n}\sum_{j=1}^{n}\omega_iCov(R_i , R_j) = \omega^{'}\Sigma\omega$. 
 
 Há duas otimizações dentre as mais conhecidas para abordagem do problema em questão, as quais são:
 
@@ -612,26 +660,11 @@ Há duas otimizações dentre as mais conhecidas para abordagem do problema em q
 
 ## Otimização do portfólio
 
-Utilizaremos o segundo método  descrito acima para otimizar o portfólio a ser apresentado em futuro trabalho com o auxílio da a função *portfolio.optim* do pacote *tseries* que possbilita ajustarmos um portfólio dando como parâmetros a matriz de covariância desejada, o vetor de retorno esperado, a taxa de risco livre, se é possível ter vendas curtas. O valor objetivo $\mu$ será a média dos retornos diários.
+Utilizaremos o segundo método  descrito acima para otimizar o portfólio a ser apresentado em futuro trabalho com o auxílio da a função *portfolio.optim* do pacote *tseries* que possbilita ajustarmos um portfólio dando como parâmetros a matriz de covariância desejada, o vetor de retorno esperado, a TRLR, se é possível ter vendas curtas. O valor objetivo $\mu$ será a média dos retornos diários.
 
-## Fronteira Eficiente
+## Próximo Passo
 
-A fronteira eficiente descreve o relacionamento entre o retorno que pode ser esperado de uma carteira e da volatilidade da carteira. Pode ser extraída na forma de uma curva em um gráfico do risco de encontro a retorno previsto de uma carteira. A fronteira eficiente dá o melhor retorno que pode ser esperado para um dado nível de risco ou o mais baixo nível de risco necessário conseguir uma taxa de retorno prevista dada.
-
-
-```{r}
-#g62
-
-#\begin{center}
-# `r legenda_graf7`
-#\end{center}
-
-```
-
-## Índice de Sharpe
-
-Para avaliação do desempenho da otimização do portfólio, utiliza-se o índice de Sharpe, calculado como: $I_{s}=\frac{(R_{i}-R{f})}{\sigma_{i}}$, onde $R_{i}$ é o Retorno do Ativo, $R{f}$ é retorno livre de risco e $\sigma_{i}$ é o Risco do Ativo. Sua interpretação é dada por:para cada 1 ponto de risco que o investidor teve no passado houve um prêmio de $I_{s}$ pontos de rentabilidade acima daquela que ele receberia se tivesse optado por um investimento livre de risco. O retorno livre de risco considerado nas análises será de 0%.
-
+No próximo relatório, faremos a otimização das ações que compõem o portfólio
 
 # Referências
 

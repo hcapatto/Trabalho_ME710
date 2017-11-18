@@ -21,7 +21,7 @@ output:
   html_document: default
   fig_caption: yes
   mainfont: Times New Roman
-linestretch: 2
+linestretch: 1.5
 fontsize: 12bp
 ---
 
@@ -81,7 +81,7 @@ knitr::opts_chunk$set(fig.align='center', echo=FALSE, warning=FALSE, message=FAL
 
 #pacotes = c("tidyverse","reshape2","knitr","captioner","gdata","gridExtra","Matrix","plotrix","xtable")
 
-packages= c("tidyverse","data.table","reshape2","captioner","gridExtra","xtable","ggpubr","MASS", "ggfortify","ICtest","pastecs","psych","xtable","quadprog","PerformanceAnalytics","corrplot","scales","knitr","RiskPortfolios","kableExtra","formattable")
+packages= c("tidyverse","data.table","reshape2","captioner","gridExtra","xtable","ggpubr","MASS", "ggfortify","ICtest","pastecs","psych","xtable","quadprog","PerformanceAnalytics","corrplot","scales","knitr","RiskPortfolios","kableExtra","formattable","tseries")
 
 
 #install.packages(packages)
@@ -102,7 +102,7 @@ tbls <- captioner(prefix="Tabela")
 #legenda para as tabelas
 
 # legenda para a primeira tabela(estats descr) do primeiro exercício
-legenda_table1 = tbls(name="table_estat_descr1",caption = "Estatísticas Descritivas para o Retorno diário. A Tabela está ordenada pela ordem alfabética da sigla de cada ativo. A coluna P Valor é referente ao valor p do Teste de Shapiro Wilk aplicado ao retorno de cada ação. SD: Desvio Padrão. SE: Erro Padrão. Para análise dos retornos, separamos os dados em dois grupos, coluna ID por meio de análise gráfica. Grupo 1: pela análise, não mostraram afetados pela crise de 2008-2009, ou seja, o retorno mais positivo ou mais negativo que se destaca em relação ao restante das observações não está compreendido no período de tempo de 2008-2009. Grupo 2: compreende os retornos que foram influenciados pela crise, no qual o retorno mais positivo ou mais negativo esteve compreendido no período entre 2008-2009.")
+legenda_table1 = tbls(name="table_estat_descr1",caption = "Estatísticas Descritivas para o Retorno diário. A Tabela está ordenada pela ordem alfabética da sigla de cada ativo. SD: Desvio Padrão. Na coluna ID está representada a separaçã dos dados em dois grupos,  realizada por meio de análise gráfica. Grupo 1: pela análise, não mostraram afetados pela crise de 2008-2009, ou seja, o retorno mais positivo ou mais negativo que se destaca em relação ao restante das observações não está compreendido no período de tempo de 2008-2009. Grupo 2: compreende os retornos que foram influenciados pela crise, no qual o retorno mais positivo ou mais negativo esteve compreendido no período entre 2008-2009.")
 
 legenda_table2 = tbls(name="table_aic_bic",caption = "Comparação dos modelos")
 legenda_table3 = tbls(name="table_esti_testedenulidade",caption = "Estimativas dos parâmetros, intervalo de confiança e teste de nulidade")
@@ -113,9 +113,7 @@ legenda_graf1 = figs(name="graf1_series",caption = "Retorno diário para as aç�
 
 legenda_graf2 = figs(name="graf2_series",caption = "Retorno diário para as ações:BREW,NTRS,NUAN,SCSS e TBBK")
 
-legenda_graf3 = figs(name="graf3_dispersao",caption = "Retorno diário para as ações: HZO,IART,IBKC,INGR e MPWR")
-
-legenda_graf4 = figs(name="graf4_corre",caption = "Gráfico para estudo da correlação entre retornos. Quanto maior for o tamanho do círculo, maior será o vlor da correlação em módulo")
+legenda_graf3 = figs(name="graf4_corre",caption = "Gráfico para estudo da correlação entre retornos. Quanto maior for o tamanho do círculo, maior será o vlor da correlação em módulo")
 
 legenda_graf5 = figs(name="graf5_envelope",caption = "Retorno diário para as ações:MCHX,NTRS,NUAN,SCSS e TBBK")
 
@@ -408,22 +406,15 @@ g58 = ggplot(retorno2, aes(x = as.Date(Data), y=YRCW)) + geom_line() + scale_x_d
 #estatisticas descritivas
 
 
-result_p_value = as.vector(sapply(retorno2[,1:30],function(x){ifelse(shapiro.test(x)$p.value < 0.0001, "< 0.001",round(tu$p.value,4))}))
+result_p_value_sw = as.vector(sapply(retorno2[,1:30],function(x){ifelse(shapiro.test(x)$p.value < 0.0001, "< 0.001",round(tu$p.value,4))}))
 
-as.vector(sapply(retorno2[,1:30],function(x){ifelse(jarque.bera.test(x)$p.value < 0.0001, "< 0.001",round(jarque.bera.test$p.value,4))}))
+result_p_value_jb = as.vector(sapply(retorno2[,1:30],function(x){ifelse(jarque.bera.test(x)$p.value < 0.0001, "< 0.001",round(jarque.bera.test$p.value,4))}))
 
 stats_descr_retorno = as.data.frame(describe(retorno2[,1:30]))
-stats_descr_retorno = stats_descr_retorno[-c(1,2,5,6,7,10)]
-stats_descr_retorno$P_Valor = result_p_value 
+stats_descr_retorno = stats_descr_retorno[-c(1,2,5,6,7,10,13)]
 stats_descr_retorno$ID=c(1,2,1,1,2,2,1,1,2,2,2,1,2,1,1,2,1,1,2,2,1,2,2,2,2,2,2,1,1,1) 
-names(stats_descr_retorno)=c("Média","SD","Min", "Máx","Assimetria","Curtose","SE","P Valor","ID")
-stats_descr_retorno$Média=percent(stats_descr_retorno$Média)
-stats_descr_retorno$SD=percent(stats_descr_retorno$SD)
-stats_descr_retorno$SE=percent(stats_descr_retorno$SE)
-stats_descr_retorno$Min=percent(stats_descr_retorno$Min)
-stats_descr_retorno$Máx=percent(stats_descr_retorno$Máx)
-stats_descr_retorno$Assimetria=round(stats_descr_retorno$Assimetria,3)
-stats_descr_retorno$Curtose=round(stats_descr_retorno$Curtose,3)
+names(stats_descr_retorno)=c("Média","SD","Min", "Máx","Assimetria","Curtose","ID")
+
 ```
 
 ```{r}
@@ -540,7 +531,7 @@ Para avaliação do desempenho da otimização do portfólio, utiliza-se o índi
 A fronteira eficiente descreve o relacionamento entre o retorno que pode ser esperado de uma carteira e da volatilidade da carteira. Pode ser extraída na forma de uma curva em um gráfico do risco de encontro a retorno previsto de uma carteira. A fronteira eficiente dá o melhor retorno que pode ser esperado para um dado nível de risco ou o mais baixo nível de risco necessário conseguir uma taxa de retorno prevista dada.
 
 
-# Análise descritiva
+# Análise preliminar
 
 Nesta parte do relatório, analisaremos os retornos diários de trinta ações que comporão o portfólio a ser analisado. O banco de dados  é composto por trinta preços diários de fechamento da bolsa de valores NASDAQ e os ativos estão referenciadas através das siglas utilizadas na NASDAQ e são: AAPL (Apple), ATSG (Aaron's, Inc), AVNW (Aviat Networks Inc), BOOM (Dmc Global Inc), BREW (Craft Brew Alliance Inc), BRK_A (Berkshire Hathaway Inc. Class A), CASH (Meta Financial Group Inc.), CPRT (Copart, inc), EZPW (EZCORP Inc), HWKN (Hawkins, Inc.), HXL  (Hexcel Corporation), HZO  (MarineMax Inc), IART (Integra Lifesciences Holdings Corp), IBKC (IBERIABANK Corp), INGR (Ingredion Inc), ININ (INTERACTIVE INTELLIGENCE INC), INO  (Inovio Pharmaceuticals Inc), INSM (Insmed Incorporated), INSY (Insys Therapeutics Inc), KRNY (Kearny Financial Corp), MCHP (Microchip Technology Inc), MCHX (Marchex, Inc), NTRS (Northern Trust Corporation), NUAN (Nuance Communications Inc), SCSS (Select Comfort Corp), UTHR (United Therapeutics Corporation), TBBK (Bancorp Inc), TCBK (TriCo Bancshares), YRCW  (YRC Worldwide Inc), YUM (Yum! Brands, Inc), ZIXI (Zix Corporation). 
 
@@ -557,10 +548,6 @@ O primeiro mostrando 5 séries que resumem o comportamento visto no primeiro gru
 
 O segundo conjunto compreende os retornos que foram influenciados pela crise, no qual o retorno mais positivo ou mais negativo esteve compreendido no período entre 2008-2009 e são: ATSG, BREW, BRK_A, HWKN, HXL, HZO, IBKC, INO, SEAC, MCHP, NTRS, NUAN, SCSS, TBBK, TCBK, UTHR.  
 
-Analisaremos primordialmente as principais características que são semelhantes nos retornos do primeiro grupo. Podemos ver na Tabela 1 , que a grande maioria das ações possui em média retorno positivo,  indicando ganho quando se investe nessas ações, havendo exceções para as ações INSY, MCHX e YRCW, nas quais vê-se que em média os retornos são negativos.
-
-
-
 ## Distribuição dos retornos
 
 Antes de começarmos as análises gráficas, vamos verificar se a distribuição dos retornos seguem a normalidade, onde preliminarmente vamos introduzir o Teste de Jarque-Bera. 
@@ -569,22 +556,27 @@ Antes de começarmos as análises gráficas, vamos verificar se a distribuição
 
 O teste de Jarque-Bera é um teste estatístico que visa utlizar a assimetria e curtose amostral para verificar a normalidade dos dados. A estatística do teste é: $JB = \frac{n-k+1}{6}(S^2+\frac{1}{4}(C-3)^2)$, onde n é o número de observações, S é a assimetria amostral, C é a curtose amostral e k é quantidade de regressores. S e C são obtidos atráves das seguintes equações: $S = \frac{\frac{1}{n}\sum_{i=1}^{n}(x_i-\bar{x})^3}{(\frac{1}{n}\sum_{i=1}^{n}(x_i-\bar{x})^2)^{\frac{3}{2}}}$ e $C = \frac{\frac{1}{n}\sum_{i=1}^{n}(x_i-\bar{x})^4}{(\frac{1}{n}\sum_{i=1}^{n}(x_i-\bar{x})^2)^2}$, onde $\bar{x}$ é a média amostral. 
 
-Se os dados vem de uma distribuição normal, $JB \sim \chi^2_{2}$. A Hipótese nula é a de que conjuntamente a assimeitria e o excesso de curtose são iguais a zero pois amostral que vem de distribuição normal tem assimetria igual a zero e excesso de curtose igual a zero(i.e, curtose igual a 3).
+Se os dados vem de uma distribuição normal, $JB \sim \chi^2_{2}$. A Hipótese nula é a de que conjuntamente a assimeitria e o excesso de curtose são iguais a zero pois amostral que vem de distribuição normal tem assimetria igual a zero e excesso de curtose igual a zero, isto é, curtose igual a 3.
 
 
-Os p-valores obtidos a partir Teste de Shapiro Wilk, vê-se que todos os retornos obtidos não seguem uma distribuição normal, o que deveria ocorrer caso a hipótese nula não fosse rejeitada. Este resultado pode nos ajudar a entender o que a assimetria e a curtose dos retornos têm a dizer sobre a forma das respectivas distribuições.
+Voltando à análise da distribuição dos retornos, os p-valores obtidos a partir Teste de Shapiro Wilk são para todos os retornos menores que 0.001, que faz-nos rejeitar a hipótese de os dados seguem uma distribuiçaõ normal. Porém este não será o único critério que será utilizado para que decidirmos se os dados advém de distribuição normal ou não. Utilizando o Teste de Jarque-Bera, o resultado obtido é o mesmo que o do teste acima. Ou seja, os dois testes utilizados rejeitaram a normalidade dos retornos. Vamos agora utilizar a assimetria e a curtose para vermos se essas distribuições são normais.
+
+Podemos ver que para todas as ações, os valores das curtoses são maiores que 3, ou seja temos excesso de curtose e  indicam que as respectivas leis de probabilidade possuem achatamento diferente  em relação ao da distribuição normal. Vale ressaltar que esses resultados são bem distintos entre cada retorno. Observamos que para o retornos dos ativos que compõem o primeiro grupo, em média a curtose é de:`r round(mean(subset(stats_descr_retorno, ID==1)$Curtose),2)`, ou seja, em geral distribuições têm caudas mais apesadas que a distribuição normal .  Já para o segundo agrupamento, em média, a curtose é de valor `r round(mean(subset(stats_descr_retorno, ID==2)$Curtose),2)`, indicando que também que as caudas são mais pesadas em relacão ao da Normal. Mas um comportamento interessante deve-se ao fato do primeiro grupo apresentar caudas menos pesadas, em média, do que o segundo grupo. Com estes resultados, podemos infereir que os retornos não advém da distribuição normal.
+
+Para os valores da assimetria, temos que o comportamento das distribuições dos retornos se diferem. Para o primeiro grupo, em média, a cauda da esquerda da distribuição é maior que a da direita pois o valor da assimetria é negativo, com valor `r round(mean(subset(stats_descr_retorno, ID==1)$Assimetria),2)`. Para o segundo grupo, temos que o valor em média do coeficiente de assimetria é de  `r round(mean(subset(stats_descr_retorno, ID==2)$Assimetria),2)`, ou seja, a cauda da direita da distribuição é maior que a da esquerda pois o valor da assimetria é positivo. Além deste resultados, podemos inferir, dados os valores obtidos, que em média as assimetrias se diferem os da distribuição normal, indicando que as distribuições dos retornos são distintas da distribuição Normal.
 
 
-Podemos observar que para este grupo, o padrão de variabilidade dos dados se configura de maneira parecida, com o erro padrão, na coluna SE da Tabela 1, tendo valores menores que 0,1%, com exceção dos retornos dos ativos AVNW, INSM,INSY E YRCM,  que possuem erros padrão de respectivamente: `r stats_descr_retorno[3,7]`, `r stats_descr_retorno[18,7]`,`r stats_descr_retorno[19,7]` e `r stats_descr_retorno[28,7]`e que assim indicam que são retornos que apresentam maior volatilidade em relação aos demais do mesmo grupo. Já para o segundo agrupamento podemos ver que a variabilidade, na coluna SE, são menores que 0.1%, com ressalva ao retorno do ativo INO, que possui SE=`r stats_descr_retorno[16,7]`. Então podemos presumir que excetuando as exceções, as variabilidades tanto para o primeiro quanto para o segundo grupo são parecidas 
+Unindo todas as análises feitas anteriormente, vemos que os dois testes realizados rejeitaram suas respectivas hipóteses nulas, ou seja, nos dois testes rejeitou se a hipótse de que os retornos seguiam uma distribuição normal. Observando os resultados das análises para curtose e assimetria, conjecturamos que a distribuição não é uma suposição razoável para a distribuição dos retornos. Ainda podemos observar um comportamento distinto entre os dois grupos no qual os dados foram separados. Para o primeiro grupo houve uma curtose em média que o segundo grupo e assimetria negativa, ou seja, podemos conjecturar que a distribuição para o primeiro tem caudas mais leves que as da segunda e possuem assimetria negativa, enquanto a do segundo grupo, tem assimetria positiva.
 
-Podemos ver que, neste agrupamento, os valores das curtoses em todos os retornos são diferentes de 0 e  indicam que as respectivas leis de probabilidade possuem achatamento diferente  em relação ao da distribuição normal, mas vale ressaltar que esses resultados são bem distintos entre cada retorno, valendo observar que  7 dos 14 retornos dos ativos que compõem o primeiro grupo tem em média curtose negativa,`r round(mean(subset(stats_descr_retorno, ID==1)$Curtose),2)`, ou seja, as distribuições  são mais achatadas que a distribuição normal .  Já para o segundo agrupamento, em média, a curtose é positiva, com valor `r round(mean(subset(stats_descr_retorno, ID==2)$Curtose),2)`, indicando que o grau achatamento é igual ao da Normal, além de apontar que, em geral, as distribuições dos retornos deste grupo têm caudas mais pesadas que aquela distribuição.   O primeiro grupo, no entanto, possui distribuições com caudas mais pesadas do que a normal, como as que se apresentam nos retornos dos ativos AVNM, INSM, YRCM, enquanto no segundo grupo há distribuições mais achatadas que a Normal, como as que se apresentam nos retornos dos ativos MCHP, SCSS e UTHR.  
+## Análise descritiva
 
-Para os valores da assimetria, temos que para todas as distribuições dos retornos a assimetria é positiva, ou seja, a cauda da direita da distribuição é maior que a da esquerda. Temos diferenças entre os dois grupos analisados pois o primeiro grupo apresenta, em geral, coeficientes de assimetria, em média, maiores que o do segundo grupo, com valores respectivos `r round(mean(subset(stats_descr_retorno, ID==1)$Assimetria),2)` e `r round(mean(subset(stats_descr_retorno, ID==2)$Assimetria),2)`. 
+Agora, analisaremos o comportamento das médias para cada grupo porém, a priori, podemos ver na Tabela 1 , que a maioria das ações possui em média retorno positivo, indicando ganho quando se investe nessas ações, havendo exceções para as ações INSY, MCHX e YRCW, nas quais vê-se que em média os retornos são negativos. Para o primeiro grupo, vemos que em média os retornos médio diários são da pordem de: `r percent(round(mean(subset(stats_descr_retorno, ID==1)$Média),4))` e para o segundo grupo, `r percent(round(mean(subset(stats_descr_retorno, ID==2)$Média),4))`. Então podemos conjecutrar que o segundo grupo traz maiores retornos em média, do que o primeiro grupo.
 
-Então, podemos inferir de maneira geral que as distribuições dos retornos para os ativos não seguem uma distribuição normal, com todas possuindo assimetria positiva. Apenas uma parte delas, a 5, tem caudas mais pesadas que a da distribuição normal.
+Vamos analisar que o padrão de variabilidade dos dados via desvio padrão amostral, referenciado na coluna SD da Tabela 1. Vemos que em geral, os valores são menores que 10%, com exceção para os  retornos dos ativos INSY E YRCM,  que possuem erros padrão de respectivamente: `r percent(stats_descr_retorno[18,2])` e `r percent(stats_descr_retorno[28,2])`, indicando que são retornos que apresentam maior volatilidade em relação aos demais. Para o primeiro agrupamento podemos ver que a variabilidade, em média, é da ordem de `r percent(round(mean(subset(stats_descr_retorno, ID==1)$SD),4))` e do segundo,`r percent(round(mean(subset(stats_descr_retorno, ID==2)$SD),4))`. Podemos enxergar que em média o primeiro grupo tem maior volatilidade do que o segundo e que em média  essa varfiabilidade é maior do primeiro em relação so segundo grupo na ordem de: `r percent(1-round(mean(subset(stats_descr_retorno, ID==2)$SD),4)/(round(mean(subset(stats_descr_retorno, ID==1)$SD),4)))`.
 
+Para o mínimo retorno obtido para cada grupo temos: para o primeiro, em média, o valor dos minímos estão em torno de `r percent(round(mean(subset(stats_descr_retorno, ID==1)$Min),4))` e para o segundo, `r percent(round(mean(subset(stats_descr_retorno, ID==2)$Min),4))`. Logo, percebemos que o primeiro agrupamento possui retornos mínimos, em média, menores que os do segundo grupo. Para o máximo, vemos que o primeiro grupo tem o máximo dos retornos em média de `r percent(round(mean(subset(stats_descr_retorno, ID==1)$Máx),4))` e para o segundo, `r percent(round(mean(subset(stats_descr_retorno, ID==2)$Máx),4))`. Vemos que o primeiro grupo apresenta retorno máximos, em média, maiores que o segundo grupo.
 
-Nos Gráfico 3, vamos olhar para a estrutura de correlação entre os retornos dos ativos pois estamos interessados nos retornos que tem correlação negativa, ou seja, quando um retorno cresce, outro cai. Queremos este comportamento pois interessa nos que a perda em retorno seja compensado pelo ganho no retorno em outro. Consideramos ainda que correlações entre -0.2 e 0.2 são baixas, entre 0.2 e 0.7 ou entre -0.2 e -0.7 são fracamente correlacionadas e entre 0.7 e 1 e entre 0.7 e 1 são altamente correlacionadas. 
+Vamos analisar a estrutura de correlação entre os retornos dos ativos. Interessa-nos o comportamento de retornos que tem correlação negativa, ou seja, quando um retorno cresce, outro cai e dos que possuem correlação positiva, pois a movimentação financeira é igual, ou seja, quando um retorno aumenta, outro aumenta simultaneamente. Queremos este comportamento pois interessa nos que a perda em retorno seja compensado pelo ganho no retorno em outro. Consideramos ainda que correlações entre -0.2 e 0.2 são fracamente correlacionadas e no caso no em que for 0, não são correlacionadas, entre 0.2 e 0.7 ou entre -0.2 e -0.7 são moderadamente correlacionadas e entre 0.7 e 1 e entre 0.7 e 1 são altamente correlacionadas. 
 
 Vemos que para ação HWKN, as maiores correlações positivas são com retornos dos ativos BREW, BRW_A,HXL, INGR, com os respectivos valores `r round(corr["HWKN","BREW"],2)`, `r round(corr["HWKN","BRK_A"],2)`, `r round(corr["HWKN","HXL"],2)` e `r round(corr["HWKN","INGR"],2)`. Ou seja, dado o crescimento no retorno de HWKN, os outros retornos crescerão também.  Já as maiores correlações negativas são com os retorno dos ativos BOOM, MCHX, com os respectivos valores `r round(corr["HWKN","BOOM"],2)` e `r round(corr["HWKN","MCHX"],2)`. Portanto, quando o valor do retorno de HWKN cai, os retornos de BOOM e MCHX crescerão, o que é mais produtivo para montagem do portfólio. Essa mesma análise pode ser feita para o retorno dos outros ativos.
 
@@ -592,8 +584,6 @@ Realizando a mesma análise anterior, vemos que a carteira está bem planejada, 
 
 ```{r, fig.height=7.5, fig.width=6}
 grid.arrange(g31,g34,g42,g48,g58,nrow=5,ncol=1)
-
-
 ```
 
 \begin{center}
@@ -615,23 +605,29 @@ grid.arrange(g35,g52,g53,g54,g55,nrow=5,ncol=1)
 
 ```{r }
 # IART IBKC INGR MPWR INO INSM INSY SEAC MCHP MCHX NTRS NUAN SCSS TBBK TCBK UTHR YRCW YUM ZIXI 
+stats_descr_retorno$Média=percent(stats_descr_retorno$Média)
+stats_descr_retorno$SD=percent(stats_descr_retorno$SD)
+stats_descr_retorno$Min=percent(stats_descr_retorno$Min)
+stats_descr_retorno$Máx=percent(stats_descr_retorno$Máx)
+stats_descr_retorno$Assimetria=round(stats_descr_retorno$Assimetria,3)
+stats_descr_retorno$Curtose=round(stats_descr_retorno$Curtose,3)
+names(stats_descr_retorno)=c("Média(%)","SD(%)","Min(%)", "Máx(%)","Assimetria","Curtose","ID")
 kable(stats_descr_retorno, "latex", booktabs = T) %>%
-  kable_styling(font_size=7)
+  kable_styling(font_size=5)
 
 #(stats_desc = as.data.frame(stat.desc(as.matrix(dados[,2:31]), desc=TRUE, norm=TRUE, p=0.95)))
 ```
-
 
 \begin{center}
  `r legenda_table1`
 \end{center}
 
-
-```{r fig.height=7.5, fig.width=6}
+```{r fig.height=6, fig.width=4.5}
 corrplot(corr,type="upper", order="hclust", col=c("black", "white"),bg="lightblue")
 ```
 
 
+\vspace*{1cm}
 \begin{center}
  `r legenda_graf3`
 \end{center}
@@ -662,9 +658,13 @@ Há duas otimizações dentre as mais conhecidas para abordagem do problema em q
 
 Utilizaremos o segundo método  descrito acima para otimizar o portfólio a ser apresentado em futuro trabalho com o auxílio da a função *portfolio.optim* do pacote *tseries* que possbilita ajustarmos um portfólio dando como parâmetros a matriz de covariância desejada, o vetor de retorno esperado, a TRLR, se é possível ter vendas curtas. O valor objetivo $\mu$ será a média dos retornos diários.
 
-## Próximo Passo
+# Plano de trabalho
 
-No próximo relatório, faremos a otimização das ações que compõem o portfólio
+## Relatório final
+
+O relatório final irá conter as alocações de portfólio utilizadas para cada
+um dos portfólios considerados no estudo; e conclusões.
+
 
 # Referências
 

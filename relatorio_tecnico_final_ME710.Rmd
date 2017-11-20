@@ -82,7 +82,7 @@ knitr::opts_chunk$set(fig.align='center', echo=FALSE, warning=FALSE, message=FAL
 #pacotes = c("tidyverse","reshape2","knitr","captioner","gdata","gridExtra","Matrix","plotrix","xtable")
 #install.packages(pacotes)
 
-packages= c("tidyverse","data.table","reshape2","captioner","gridExtra","xtable","ggpubr","MASS", "ggfortify","RiskPortfolios","stocks","PerformanceAnalytics","pastecs","psych","xtable","quadprog","knitr","scales", "kableExtra","PortfolioAnalytics","ROI","ROI.plugin.quadprog","tseries")
+packages= c("tidyverse","data.table","reshape2","captioner","gridExtra","xtable","ggpubr", "ggfortify","RiskPortfolios","stocks","PerformanceAnalytics","pastecs","psych","xtable","quadprog","knitr","scales", "kableExtra","PortfolioAnalytics","ROI","ROI.plugin.quadprog","tseries")
 
 #mostra quais pacotes foram carregados
 invisible(lapply(packages, require, character.only = TRUE))

@@ -113,7 +113,7 @@ legenda_graf1 = figs(name="graf1_series",caption = "Retorno diário para as aç�
 
 legenda_graf2 = figs(name="graf2_series",caption = "Retorno diário para as ações:BREW,NTRS,NUAN,SCSS e TBBK")
 
-legenda_graf3 = figs(name="graf4_corre",caption = "Gráfico para estudo da correlação entre retornos. Quanto maior for o tamanho do círculo, maior será o vlor da correlação em módulo")
+legenda_graf3 = figs(name="graf4_corre",caption = "Gráfico para estudo da correlação entre retornos. Quanto maior for o tamanho do círculo, maior será o valor da correlação em módulo")
 
 legenda_graf5 = figs(name="graf5_envelope",caption = "Retorno diário para as ações:MCHX,NTRS,NUAN,SCSS e TBBK")
 
@@ -308,7 +308,25 @@ g30 = ggplot(dados, aes(x = as.Date(Data), y=ZIXI)) + geom_line() + scale_x_date
 ```
 
 ```{r}
+
+
+t = round(corr,2)
+ver = numeric(nrow(t))
+for(i in 1:nrow(t)){
+  for(j in 1:ncol(t)){
+    if(t[i,j] < -0.6){
+      ver[i]=ver[i] + 1
+    } 
+  }
+}
+ind = which(ver!=0)
+value = rownames(t)
+ac_util = value[ind]
+
 data2 = as.data.frame(dados)
+fg = data2[,ac_util]
+
+valori = percent((fg[3166,]/fg[1,])-1)
 
 rownames(data2) = data2[,1]
 data2[,1] <- NULL
@@ -467,15 +485,15 @@ g62 = ggplot(eff, aes(x=Std.Dev, y=Exp.Return)) + geom_point(alpha=.1, color=eal
 
 # Introdução
 
-O objetivo deste relatório parcial é mostrar o comportamento dos ativos que compõem o portfólio por meio das análises descritivas e de um teste estatístico para avaliação da distribuição dos retornos. Iremos realizar uma análise descritiva para observar o comportamento dos retornos obtidos ao longo do tempo a fim de identificar algumas causas de aumento ou queda no retorno. 
+O objetivo deste relatório parcial é mostrar o comportamento dos ativos que compõem o portfólio por meio das análises descritivas e de um teste estatístico para avaliação da distribuição dos retornos. Iremos realizar uma análise descritiva para observar o comportamento dos retornos obtidos ao longo do tempo. O comportamento pode ser de queda ou crescimento. 
 
 Para investigação dos dados, obtivemos a matriz de correlações para verificarmos se há algum comportamento de aumento ou queda simultânea dos retornos, pois a correlação obtida mede o grau de dependência linear entre as variáveis. Serão introduzidos conceitos como retorno e volatilidade, índice de Sharpe, as suposições para montagem de um portfólio e considerações sobre o software que será utilizado para otimização do portfólio.
 
-Na segunda seção, conceituamos retorno, volatilidade, portfólio, índice de sharpe. fronteira eficiente e taxa de retorno livre de risco. Na terceira seção analisaremos o comportamento geral dos 30 retornos dos ativos, atráves de análise gráfica, descritiva, incluindo uma análise de correlações.  Em seguida, na terceira seção,  mostramos a interpretação e a forma de cálculo do Índice de Sharpe, apresentaremos as suposições para construção do portfólio que será ajustado posteriormente.
+Na segunda seção, conceituamos retorno, volatilidade, portfólio, índice de Sharpe. fronteira eficiente e taxa de retorno livre de risco. Na terceira seção analisaremos o comportamento geral dos 30 retornos dos ativos, atráves de análise gráfica, descritiva, incluindo uma análise de correlações.  Em seguida, na terceira seção,  mostramos a interpretação e a forma de cálculo do Índice de Sharpe, apresentaremos as suposições para construção do portfólio que será ajustado posteriormente.
 
 Para essas análises foram utilizados os softwares *R*[1] e *Rstudio*[2]. Os pacotes do *R* utilizados foram: *tidyverse*,*data.table*,*reshape2*,*captioner*,*gridExtra*,*xtable*,*ggpubr*,*MASS*, *ggfortify*,*ICtest*,*pastecs*,*psych*,*quadprog*,*PerformanceAnalytics*,*corrplot*,*scales*,*knitr*, *kableExtra*,*formattable*.
 
-# Fundamentação Teórica: conceituação
+# Conceitos Financeiros Importantes
 
 Antes de realizar as análises descritivas, serão conceituados alguns termos utilizados em finanças quantitativas para melhor compreensão do texto a seguir.
 
@@ -483,7 +501,7 @@ Antes de realizar as análises descritivas, serão conceituados alguns termos ut
 
 O retorno é o ganho ou perda de um investimento em período de tempo. Usualmente ele é calculado como o log-retorno do investimento i, no tempo t e definido como: $r_{i,t} = log(P_{i,t})-log(P_{i,t-1})$.
 
-Para trabalhos envolvendo séries financeiras, é preferível a utilização da variável retorno ao invés da variável preço pois os retornos possuem fatos etilizados, que são:
+Para trabalhos envolvendo séries financeiras, é preferível a utilização da variável retorno ao invés da variável preço pois os retornos possuem fatos estilizados, que são:
 
 * Retornos, não são em geral, autocorrelacionados
 
@@ -496,9 +514,7 @@ leptocúrtica (caudas pesadas);
 
 Outro conceito importante é o de volatilidade, que é uma medida estatística de dispersão dos retornos em torno da média destes,  definida como: $h_t = E_{t-1} ((r_t - \mu_t )^2 )$, onde $\mu_t = E(r_t |F_{t-1} ) = E_{t-1} (r_t )$ é o valor esperado condicionado à informação até o tempo $t-1$. 
 
-A volatilidade pode ser estimada pelo desvio padrão amostral, cuja vantagem é a facíl obtenção e por isso foi utilizada no trabalho. 
-
-Vale ressalatar que há várias maneiras de se modelar a volatilidade.
+A volatilidade pode ser estimada pelo desvio padrão amostral, cuja vantagem é a facíl obtenção e por isso foi utilizada no trabalho, para a análise descritiva e utilizada no obtenção do portfólio. 
 
 ## Portfólio
 
@@ -524,14 +540,14 @@ Na prática, no entanto, a taxa livre de risco não existe, porque mesmo os inve
 
 ## Índice de Sharpe
 
-Para avaliação do desempenho da otimização do portfólio, utiliza-se o índice de Sharpe, calculado como: $I_{s}=\frac{(R_{i}-R{f})}{\sigma_{i}}$, onde $R_{i}$ é o Retorno do Ativo, $R{f}$ é retorno livre de risco e $\sigma_{i}$ é o Risco do Ativo. Sua interpretação é dada por:para cada 1 ponto de risco que o investidor teve no passado houve um prêmio de $I_{s}$ pontos de rentabilidade acima daquela que ele receberia se tivesse optado por um investimento livre de risco. O retorno livre de risco considerado nas análises será de 0% pois na prática não há taxa livre de risco.
+Para avaliação do desempenho da otimização do portfólio, utiliza-se o índice de Sharpe, calculado como: $I_{s}=\frac{(R_{i}-R{f})}{\sigma_{i}}$, onde $R_{i}$ é o Retorno do Ativo, $R{f}$ é retorno livre de risco e $\sigma_{i}$ é o Risco do Ativo. Sua interpretação é dada por:para cada 1 ponto de risco que o investidor teve no passado houve um prêmio de $I_{s}$ pontos de rentabilidade acima daquela que ele receberia se tivesse optado por um investimento livre de risco. O retorno livre de risco considerado nas análises será de 0% pois na prática não há taxa livre de risco, excetuando quando o dinheiro está na Poupança.
 
 ## Fronteira Eficiente
 
 A fronteira eficiente descreve o relacionamento entre o retorno que pode ser esperado de uma carteira e da volatilidade da carteira. Pode ser extraída na forma de uma curva em um gráfico do risco de encontro a retorno previsto de uma carteira. A fronteira eficiente dá o melhor retorno que pode ser esperado para um dado nível de risco ou o mais baixo nível de risco necessário conseguir uma taxa de retorno prevista dada.
 
 
-# Análise preliminar
+# Análise Descritiva
 
 Nesta parte do relatório, analisaremos os retornos diários de trinta ações que comporão o portfólio a ser analisado. O banco de dados  é composto por trinta preços diários de fechamento da bolsa de valores NASDAQ e os ativos estão referenciadas através das siglas utilizadas na NASDAQ e são: AAPL (Apple), ATSG (Aaron's, Inc), AVNW (Aviat Networks Inc), BOOM (Dmc Global Inc), BREW (Craft Brew Alliance Inc), BRK_A (Berkshire Hathaway Inc. Class A), CASH (Meta Financial Group Inc.), CPRT (Copart, inc), EZPW (EZCORP Inc), HWKN (Hawkins, Inc.), HXL  (Hexcel Corporation), HZO  (MarineMax Inc), IART (Integra Lifesciences Holdings Corp), IBKC (IBERIABANK Corp), INGR (Ingredion Inc), ININ (INTERACTIVE INTELLIGENCE INC), INO  (Inovio Pharmaceuticals Inc), INSM (Insmed Incorporated), INSY (Insys Therapeutics Inc), KRNY (Kearny Financial Corp), MCHP (Microchip Technology Inc), MCHX (Marchex, Inc), NTRS (Northern Trust Corporation), NUAN (Nuance Communications Inc), SCSS (Select Comfort Corp), UTHR (United Therapeutics Corporation), TBBK (Bancorp Inc), TCBK (TriCo Bancshares), YRCW  (YRC Worldwide Inc), YUM (Yum! Brands, Inc), ZIXI (Zix Corporation). 
 
@@ -540,7 +556,7 @@ Utilizaremos 10 gráficos de retornos para análise como forma de exemplificar o
 As análises gráficas a seguir são realizadas sobre a série de retornos diários de cada ação. As estatísticas descritivas que serão utilizadas são: média, desvio padrão, correlação, assimetria e curtose. 
 
 
-As estatstísticas descritivas estão apresentadas abaixo na Tabela 1 e os gráficos, posicionados abaixo e referenciados pelas Figuras 1 e 2. 
+As estatstísticas descritivas estão apresentadas na Tabela 1 e os gráficos, referenciados pelas Figuras 1 e 2. 
 
 Para análise dos retornos, separamos os dados em dois grupos por meio de análise gráfica, que podem ser vistas nos Gráficos 1 e 2. 
 
@@ -550,13 +566,13 @@ O segundo conjunto compreende os retornos que foram influenciados pela crise, no
 
 ## Distribuição dos retornos
 
-Antes de começarmos as análises gráficas, vamos verificar se a distribuição dos retornos seguem a normalidade, onde preliminarmente vamos introduzir o Teste de Jarque-Bera. 
+Antes de começarmos as análises gráficas, vamos avaliar se a distribuição dos retornos é normal, onde preliminarmente vamos introduzir o Teste de Jarque-Bera. 
 
 ### Teste de Jarque-Bera
 
 O teste de Jarque-Bera é um teste estatístico que visa utlizar a assimetria e curtose amostral para verificar a normalidade dos dados. A estatística do teste é: $JB = \frac{n-k+1}{6}(S^2+\frac{1}{4}(C-3)^2)$, onde n é o número de observações, S é a assimetria amostral, C é a curtose amostral e k é quantidade de regressores. S e C são obtidos atráves das seguintes equações: $S = \frac{\frac{1}{n}\sum_{i=1}^{n}(x_i-\bar{x})^3}{(\frac{1}{n}\sum_{i=1}^{n}(x_i-\bar{x})^2)^{\frac{3}{2}}}$ e $C = \frac{\frac{1}{n}\sum_{i=1}^{n}(x_i-\bar{x})^4}{(\frac{1}{n}\sum_{i=1}^{n}(x_i-\bar{x})^2)^2}$, onde $\bar{x}$ é a média amostral. 
 
-Se os dados vem de uma distribuição normal, $JB \sim \chi^2_{2}$. A Hipótese nula é a de que conjuntamente a assimeitria e o excesso de curtose são iguais a zero pois amostral que vem de distribuição normal tem assimetria igual a zero e excesso de curtose igual a zero, isto é, curtose igual a 3.
+Se os dados vem de uma distribuição normal, $JB \sim \chi^2_{2}$. A Hipótese nula é a de que conjuntamente a assimetria e o excesso de curtose são iguais a zero pois amostral que vem de distribuição normal tem assimetria igual a zero e excesso de curtose igual a zero, isto é, curtose igual a 3.
 
 
 Voltando à análise da distribuição dos retornos, os p-valores obtidos a partir Teste de Shapiro Wilk são para todos os retornos menores que 0.001, que faz-nos rejeitar a hipótese de os dados seguem uma distribuiçaõ normal. Porém este não será o único critério que será utilizado para que decidirmos se os dados advém de distribuição normal ou não. Utilizando o Teste de Jarque-Bera, o resultado obtido é o mesmo que o do teste acima. Ou seja, os dois testes utilizados rejeitaram a normalidade dos retornos. Vamos agora utilizar a assimetria e a curtose para vermos se essas distribuições são normais.
@@ -566,21 +582,24 @@ Podemos ver que para todas as ações, os valores das curtoses são maiores que 
 Para os valores da assimetria, temos que o comportamento das distribuições dos retornos se diferem. Para o primeiro grupo, em média, a cauda da esquerda da distribuição é maior que a da direita pois o valor da assimetria é negativo, com valor `r round(mean(subset(stats_descr_retorno, ID==1)$Assimetria),2)`. Para o segundo grupo, temos que o valor em média do coeficiente de assimetria é de  `r round(mean(subset(stats_descr_retorno, ID==2)$Assimetria),2)`, ou seja, a cauda da direita da distribuição é maior que a da esquerda pois o valor da assimetria é positivo. Além deste resultados, podemos inferir, dados os valores obtidos, que em média as assimetrias se diferem os da distribuição normal, indicando que as distribuições dos retornos são distintas da distribuição Normal.
 
 
-Unindo todas as análises feitas anteriormente, vemos que os dois testes realizados rejeitaram suas respectivas hipóteses nulas, ou seja, nos dois testes rejeitou se a hipótse de que os retornos seguiam uma distribuição normal. Observando os resultados das análises para curtose e assimetria, conjecturamos que a distribuição não é uma suposição razoável para a distribuição dos retornos. Ainda podemos observar um comportamento distinto entre os dois grupos no qual os dados foram separados. Para o primeiro grupo houve uma curtose em média que o segundo grupo e assimetria negativa, ou seja, podemos conjecturar que a distribuição para o primeiro tem caudas mais leves que as da segunda e possuem assimetria negativa, enquanto a do segundo grupo, tem assimetria positiva.
+Unindo as análises via os testes de Jarque-Bera, Shapiro-Wilk e as análises dos comportamento da curtose e da assimetria, vemos que os dois testes realizados rejeitaram suas respectivas hipóteses nulas, ou seja, nos dois testes rejeitou se a hipótse de que os retornos seguiam uma distribuição normal. Observando os resultados das análises para curtose e assimetria, conjecturamos que a distribuição normal não é uma suposição razoável para a distribuição dos retornos. Ainda podemos observar um comportamento distinto entre os dois grupos no qual os dados foram separados. Para o primeiro grupo houve uma curtose em média que o segundo grupo e assimetria negativa, ou seja, podemos conjecturar que a distribuição para o primeiro tem caudas mais leves que as da segunda e possuem assimetria negativa, enquanto a do segundo grupo, tem assimetria positiva.
 
-## Análise descritiva
 
-Agora, analisaremos o comportamento das médias para cada grupo porém, a priori, podemos ver na Tabela 1 , que a maioria das ações possui em média retorno positivo, indicando ganho quando se investe nessas ações, havendo exceções para as ações INSY, MCHX e YRCW, nas quais vê-se que em média os retornos são negativos. Para o primeiro grupo, vemos que em média os retornos médio diários são da pordem de: `r percent(round(mean(subset(stats_descr_retorno, ID==1)$Média),4))` e para o segundo grupo, `r percent(round(mean(subset(stats_descr_retorno, ID==2)$Média),4))`. Então podemos conjecutrar que o segundo grupo traz maiores retornos em média, do que o primeiro grupo.
+Agora, analisaremos o comportamento das médias para cada grupo porém, a priori, podemos ver na Tabela 1 , que a maioria das ações possui em média retorno positivo, indicando ganho quando se investe nessas ações, havendo exceções para as ações INSY, MCHX e YRCW, nas quais vê-se que em média os retornos são negativos. Para o primeiro grupo, vemos que em média os retornos médio diários são da pordem de: `r percent(round(mean(subset(stats_descr_retorno, ID==1)$Média),4))` e para o segundo grupo, `r percent(round(mean(subset(stats_descr_retorno, ID==2)$Média),4))`. Então podemos conjecturar que o segundo grupo traz maiores retornos em média, do que o primeiro grupo.
 
-Vamos analisar que o padrão de variabilidade dos dados via desvio padrão amostral, referenciado na coluna SD da Tabela 1. Vemos que em geral, os valores são menores que 10%, com exceção para os  retornos dos ativos INSY E YRCM,  que possuem erros padrão de respectivamente: `r percent(stats_descr_retorno[18,2])` e `r percent(stats_descr_retorno[28,2])`, indicando que são retornos que apresentam maior volatilidade em relação aos demais. Para o primeiro agrupamento podemos ver que a variabilidade, em média, é da ordem de `r percent(round(mean(subset(stats_descr_retorno, ID==1)$SD),4))` e do segundo,`r percent(round(mean(subset(stats_descr_retorno, ID==2)$SD),4))`. Podemos enxergar que em média o primeiro grupo tem maior volatilidade do que o segundo e que em média  essa varfiabilidade é maior do primeiro em relação so segundo grupo na ordem de: `r percent(1-round(mean(subset(stats_descr_retorno, ID==2)$SD),4)/(round(mean(subset(stats_descr_retorno, ID==1)$SD),4)))`.
+Vamos analisar que o padrão de variabilidade dos dados via desvio padrão amostral, referenciado na coluna SD da Tabela 1. Vemos que em geral, os valores são menores que 10%, com exceção para os  retornos dos ativos INSY E YRCM,  que possuem erros padrão de respectivamente: `r percent(stats_descr_retorno[18,2])` e `r percent(stats_descr_retorno[28,2])`, indicando que são retornos que apresentam maior volatilidade em relação aos demais. Para o primeiro agrupamento podemos ver que a variabilidade, em média, é da ordem de `r percent(round(mean(subset(stats_descr_retorno, ID==1)$SD),4))` e do segundo,`r percent(round(mean(subset(stats_descr_retorno, ID==2)$SD),4))`. Podemos enxergar que em média o primeiro grupo tem maior volatilidade do que o segundo e que em média  essa variabilidade é maior do primeiro em relação so segundo grupo na ordem de: `r percent(1-round(mean(subset(stats_descr_retorno, ID==2)$SD),4)/(round(mean(subset(stats_descr_retorno, ID==1)$SD),4)))`.
 
 Para o mínimo retorno obtido para cada grupo temos: para o primeiro, em média, o valor dos minímos estão em torno de `r percent(round(mean(subset(stats_descr_retorno, ID==1)$Min),4))` e para o segundo, `r percent(round(mean(subset(stats_descr_retorno, ID==2)$Min),4))`. Logo, percebemos que o primeiro agrupamento possui retornos mínimos, em média, menores que os do segundo grupo. Para o máximo, vemos que o primeiro grupo tem o máximo dos retornos em média de `r percent(round(mean(subset(stats_descr_retorno, ID==1)$Máx),4))` e para o segundo, `r percent(round(mean(subset(stats_descr_retorno, ID==2)$Máx),4))`. Vemos que o primeiro grupo apresenta retorno máximos, em média, maiores que o segundo grupo.
 
 Vamos analisar a estrutura de correlação entre os retornos dos ativos. Interessa-nos o comportamento de retornos que tem correlação negativa, ou seja, quando um retorno cresce, outro cai e dos que possuem correlação positiva, pois a movimentação financeira é igual, ou seja, quando um retorno aumenta, outro aumenta simultaneamente. Queremos este comportamento pois interessa nos que a perda em retorno seja compensado pelo ganho no retorno em outro. Consideramos ainda que correlações entre -0.2 e 0.2 são fracamente correlacionadas e no caso no em que for 0, não são correlacionadas, entre 0.2 e 0.7 ou entre -0.2 e -0.7 são moderadamente correlacionadas e entre 0.7 e 1 e entre 0.7 e 1 são altamente correlacionadas. 
 
-Vemos que para ação HWKN, as maiores correlações positivas são com retornos dos ativos BREW, BRW_A,HXL, INGR, com os respectivos valores `r round(corr["HWKN","BREW"],2)`, `r round(corr["HWKN","BRK_A"],2)`, `r round(corr["HWKN","HXL"],2)` e `r round(corr["HWKN","INGR"],2)`. Ou seja, dado o crescimento no retorno de HWKN, os outros retornos crescerão também.  Já as maiores correlações negativas são com os retorno dos ativos BOOM, MCHX, com os respectivos valores `r round(corr["HWKN","BOOM"],2)` e `r round(corr["HWKN","MCHX"],2)`. Portanto, quando o valor do retorno de HWKN cai, os retornos de BOOM e MCHX crescerão, o que é mais produtivo para montagem do portfólio. Essa mesma análise pode ser feita para o retorno dos outros ativos.
+Por exemplo, vemos que para ação HWKN, as maiores correlações positivas são com retornos dos ativos BREW, BRW_A,HXL, INGR, com os respectivos valores `r round(corr["HWKN","BREW"],2)`, `r round(corr["HWKN","BRK_A"],2)`, `r round(corr["HWKN","HXL"],2)` e `r round(corr["HWKN","INGR"],2)`. Ou seja, dado o crescimento no retorno de HWKN, os outros retornos crescerão também.  Já as maiores correlações negativas são com os retorno dos ativos BOOM, MCHX, com os respectivos valores `r round(corr["HWKN","BOOM"],2)` e `r round(corr["HWKN","MCHX"],2)`. Portanto, quando o valor do retorno de HWKN cai, os retornos de BOOM e MCHX crescerão, o que é mais produtivo para montagem do portfólio. Essa mesma análise pode ser feita para o retorno dos outros ativos.
 
-Realizando a mesma análise anterior, vemos que a carteira está bem planejada, pois vemos que o número de ações que tem correlação negativa é alta.
+Realizando a mesma análise anterior, vamos utilizar ações cujas correlações negativas sejam menores que 0.6. Por isso escolhemos as seguintes ações para composição do portfólio: BOOM,  EZPW, HWKN, MPWR, SEAC, MCHX, NUAN, UTHR e YRCW.
+
+Para informação para as ações BOOM e MCHX, vemos que elas tem correlação menor que -.06 com o retorno do HWKN. Para o ativo MPWR, sua correlação é com o retorno do SEAC e é da ordem de `r round(corr["MPWR","SEAC"],2)`. Para o ativo NUAN, sua correlação é com o retorno de YRCW, sendo de valor `r round(corr["NUAN","YRCW"],2)`. Para o ativo EZPW, sua correlação é com o retorno de UTHR, sendo de valor `r round(corr["EZPW","UTHR"],2)`.
+
+Escolhemos essa abordagem pois buscamos as maiores correlações negativas, onde o comportamento de um retorno cai e o outro sobe para que possamos conpensar as perdas realizadas com os ganhos de outro. Logo, o portfólio a ser analisado é composto de 9 ativos e com isso buscamos a diversificação pois temos empresas de diversos segmentos
 
 ```{r, fig.height=7.5, fig.width=6}
 grid.arrange(g31,g34,g42,g48,g58,nrow=5,ncol=1)

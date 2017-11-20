@@ -270,7 +270,7 @@ retorno2 =  retorno2[complete.cases(retorno2),]
 Sigma = ifelse(cov(as.matrix(retorno[2:length(retorno),]))< 0,cov(as.matrix(retorno[2:length(retorno),]))*-1,cov(as.matrix(retorno[2:length(retorno),])))
 S.hat_shrink2 = covEstimation(as.matrix(retorno[2:length(retorno),]), control = list(type = 'lw'))
 
-media_retorno = meanEstimation(as.matrix(retorno[2:length(retorno),]))
+media_retorno = meanEstimation(as.matrix(retorno[2:nrow(retorno),]))
 
 ws <- optimalPortfolio(Sigma = Sigma, mu=media_retorno, control = list(type='minvol'))
 
